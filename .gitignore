@@ -1,14 +1,15 @@
 # Models (too large for GitHub, downloaded automatically)
-models/
+# Anchored to repo root so it doesn't also match the src/model package.
+/models/
 
 # Virtual environment
 .venv/
 
 # Generated audio (not needed in the repo)
-audio/
+/audio/
 
 # Logs (created at runtime)
-logs/
+/logs/
 
 # Python
 __pycache__/
@@ -16,8 +17,9 @@ __pycache__/
 *.pyo
 *.egg-info/
 
-# Data (downloaded via src/data.py)
-data/
+# Data (downloaded via src/data/download.py)
+# Anchored to repo root so it doesn't also match the src/data package.
+/data/
 
 # IDE
 .vscode/

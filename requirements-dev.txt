@@ -1,2 +1,3 @@
-# Dev tools (linting/formatting). Install: pip install -r requirements-dev.txt
+# Dev tools (linting/formatting/testing). Install: pip install -r requirements-dev.txt
 ruff>=0.15.0
+pytest>=8.0.0

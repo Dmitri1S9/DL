@@ -22,3 +22,9 @@ select = ["E", "F", "W", "B", "C4", "SIM", "RUF"]
 ignore = [
     "E501", # line length is enforced by the formatter, not the linter
 ]
+
+[tool.pytest.ini_options]
+# src is the import root (packages: core, data, model, evaluation, ...).
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
