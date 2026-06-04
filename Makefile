@@ -45,7 +45,8 @@ eval:
 	$(RUN) -m evaluation.evaluate --label $(LABEL) $(MOCK)
 
 # End-to-end on mocks: prepare -> train -> generate -> evaluate, fully offline.
-all: prepare train
+all: train
+	$(RUN) -m data.prepare --mock
 	$(RUN) -m model.synthesize --mock
 	$(RUN) -m evaluation.evaluate --mock --label mock
 
