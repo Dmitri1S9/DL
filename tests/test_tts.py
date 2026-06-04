@@ -3,10 +3,12 @@ import torch
 import numpy as np
 import zipfile
 import soundfile as sf
+from pathlib import Path
 from huggingface_hub import hf_hub_download
 from transformers import SpeechT5Processor, SpeechT5ForTextToSpeech, SpeechT5HifiGan
 
-MODELS_DIR = "models"
+ROOT = Path(__file__).resolve().parent.parent
+MODELS_DIR = str(ROOT / "models")
 
 
 def load_speaker_embedding(models_dir: str) -> torch.Tensor:
@@ -54,5 +56,6 @@ print(f"Mean amplitude: {np.mean(np.abs(audio)):.6f}")
 if np.max(np.abs(audio)) < 1e-6:
     print("WARNING: Audio is silent!")
 else:
-    sf.write("audio/test_raw.wav", audio, 16000)
+    (ROOT / "audio").mkdir(exist_ok=True)
+    sf.write(str(ROOT / "audio/test_raw.wav"), audio, 16000)
     print("Saved to audio/test_raw.wav")

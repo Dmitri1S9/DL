@@ -17,9 +17,10 @@ import zipfile
 from huggingface_hub import hf_hub_download
 from transformers import SpeechT5Processor, SpeechT5ForTextToSpeech, SpeechT5HifiGan
 
+ROOT        = Path(__file__).resolve().parent.parent
 SAMPLE_RATE = 16000
-MODELS_DIR  = "models"
-AUDIO_DIR   = "audio"
+MODELS_DIR  = str(ROOT / "models")
+AUDIO_DIR   = str(ROOT / "audio")
 
 Path(AUDIO_DIR).mkdir(exist_ok=True)
 
@@ -215,7 +216,7 @@ def speak(
     russian_accent: bool = True,
     droid:          bool = True,
     stutter:        bool = False,
-    output_path:    str  = "audio/output.wav",
+    output_path:    str  = f"{AUDIO_DIR}/output.wav",
 ) -> np.ndarray:
 
     print(f"\n{'─'*60}")

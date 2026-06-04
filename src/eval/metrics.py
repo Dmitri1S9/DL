@@ -92,6 +92,7 @@ def evaluate_test_set(
 
 if __name__ == "__main__":
     # Пример использования
-    ref,  _ = sf.read("data/sample_ref.wav")
-    gen,  _ = sf.read("audio/demo_1_normal.wav")
+    ROOT = Path(__file__).resolve().parents[2]
+    ref,  _ = sf.read(str(ROOT / "data/sample_ref.wav"))
+    gen,  _ = sf.read(str(ROOT / "audio/demo_1_normal.wav"))
     compute_mcd(np.array(ref), np.array(gen))
