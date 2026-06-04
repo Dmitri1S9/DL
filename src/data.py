@@ -1,6 +1,6 @@
 """
-Скачивает LJSpeech с HuggingFace и делает train/test split.
-LJSpeech: 13100 пар текст-аудио, один голос (женский), ~2.6GB.
+Download LJSpeech from HuggingFace and make a train/test split.
+LJSpeech: 13100 text-audio pairs, single (female) voice, ~2.6GB.
 """
 
 from datasets import load_dataset
@@ -10,7 +10,7 @@ DATA_DIR = str(Path(__file__).resolve().parent.parent / "data")
 
 def download_ljspeech():
     print("Downloading LJSpeech from HuggingFace...")
-    print("(~2.6GB, займёт несколько минут)\n")
+    print("(~2.6GB, this will take a few minutes)\n")
 
     dataset = load_dataset("keithito/lj_speech", split="train", cache_dir=DATA_DIR)
 
@@ -19,7 +19,7 @@ def download_ljspeech():
     print(f"Sample:\n  text: {dataset[0]['normalized_text']}")
     print(f"  audio: {dataset[0]['audio']['sampling_rate']} Hz\n")
 
-    # Стандартный split: последние 500 = test
+    # Standard split: last 500 = test
     test_size  = 500
     train_size = len(dataset) - test_size
 
@@ -29,7 +29,7 @@ def download_ljspeech():
     print(f"Train: {len(train_set)} samples")
     print(f"Test:  {len(test_set)} samples")
 
-    # Сохраняем split info
+    # Save split info
     Path(DATA_DIR).mkdir(exist_ok=True)
     with open(f"{DATA_DIR}/split_info.txt", "w") as f:
         f.write(f"Total: {len(dataset)}\n")

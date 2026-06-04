@@ -3,9 +3,9 @@ TTS Pipeline — Project 13
 =========================
 Text → [Text Layer] → [TTS Model] → [Audio Effects] → WAV
 
-Text Layer:   видишь каждый звук, можешь менять
-TTS Model:    SpeechT5 (text→mel) + HiFi-GAN (mel→wav)
-Audio Effects: дроид, эмоции, пасхалки
+Text Layer:    see every sound, can be edited
+TTS Model:     SpeechT5 (text→mel) + HiFi-GAN (mel→wav)
+Audio Effects: droid, emotions, easter eggs
 """
 
 import torch
@@ -26,7 +26,7 @@ Path(AUDIO_DIR).mkdir(exist_ok=True)
 
 
 def load_speaker_embedding(models_dir: str = MODELS_DIR) -> torch.Tensor:
-    """Загружает xvector женского голоса (slt) из zip датасета."""
+    """Load the xvector of a female voice (slt) from the dataset zip."""
     zip_path = hf_hub_download(
         repo_id="Matthijs/cmu-arctic-xvectors",
         filename="spkrec-xvect.zip",
@@ -41,19 +41,19 @@ def load_speaker_embedding(models_dir: str = MODELS_DIR) -> torch.Tensor:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# СЛОЙ 1 — TEXT LAYER
-# Здесь текст превращается в "фонемную" запись, которую ты видишь и меняешь.
-# Пока это умные текстовые замены — полноценный phonemizer можно добавить позже.
+# LAYER 1 — TEXT LAYER
+# Here text is turned into a "phoneme-like" form that you can see and edit.
+# For now these are smart text substitutions — a real phonemizer can be added later.
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Слова-триггеры для пасхалок: если в тексте есть такое слово → играем файл
+# Trigger words for easter eggs: if the text contains one → play the file
 EASTER_EGGS: dict[str, str] = {
     "yamete kudasai":   f"{AUDIO_DIR}/yamete.wav",
     "やめてください":    f"{AUDIO_DIR}/yamete.wav",
     "order 66":         f"{AUDIO_DIR}/order66.wav",
 }
 
-# Слова-триггеры для эмоций
+# Trigger words for emotions
 EMOTION_WORDS: dict[str, str] = {
     "socialism":    "dying",
     "communism":    "dying",
@@ -66,11 +66,11 @@ EMOTION_WORDS: dict[str, str] = {
     "amazing":      "happy",
 }
 
-# Замены для русского акцента: английский → как произнесёт русскоговорящий
+# Substitutions for a Russian accent: English → how a Russian speaker would say it
 RUSSIAN_ACCENT: list[tuple[str, str]] = [
     ("the ",    "ze "),
     ("The ",    "Ze "),
-    (" a ",     " "),           # артикль выбрасываем
+    (" a ",     " "),           # drop the article
     (" an ",    " "),
     ("th",      "z"),           # "this" → "zis"
     ("Th",      "Z"),
@@ -80,16 +80,16 @@ RUSSIAN_ACCENT: list[tuple[str, str]] = [
     ("tion",    "shon"),        # "nation" → "nashon"
     ("ould",    "ud"),          # "would" → "vud"
     ("h ",      " "),           # drop aspiration at end
-    ("  ",      " "),           # убираем двойные пробелы
+    ("  ",      " "),           # remove double spaces
 ]
 
 
 def show_phoneme_layer(text: str) -> None:
-    """Показывает как текст разбивается — для отладки и понимания."""
-    print(f"  Оригинал:   '{text}'")
+    """Show how the text is broken down — for debugging and understanding."""
+    print(f"  Original: '{text}'")
     after_accent = apply_russian_accent(text)
-    print(f"  С акцентом: '{after_accent}'")
-    print(f"  Символов:   {len(after_accent.split())}")
+    print(f"  Accented: '{after_accent}'")
+    print(f"  Words:    {len(after_accent.split())}")
 
 
 def apply_russian_accent(text: str) -> str:
@@ -100,7 +100,7 @@ def apply_russian_accent(text: str) -> str:
 
 
 def apply_stutter(text: str, stutter_first_n: int = 1) -> str:
-    """Заставляет модель заикаться на первых N словах."""
+    """Make the model stutter on the first N words."""
     words = text.split()
     for i in range(min(stutter_first_n, len(words))):
         w = words[i]
@@ -126,9 +126,9 @@ def detect_emotion(text: str) -> str:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# СЛОЙ 2 — TTS MODEL
-# SpeechT5: text → mel-spectrogram  (аналог FastSpeech2)
-# HiFi-GAN: mel-spectrogram → wav   (вокодер)
+# LAYER 2 — TTS MODEL
+# SpeechT5: text → mel-spectrogram  (analogous to FastSpeech2)
+# HiFi-GAN: mel-spectrogram → wav   (vocoder)
 # ══════════════════════════════════════════════════════════════════════════════
 
 class TTSModel:
@@ -166,12 +166,12 @@ class TTSModel:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# СЛОЙ 3 — AUDIO EFFECTS
-# Постпроцессинг: программно искажаем аудио
+# LAYER 3 — AUDIO EFFECTS
+# Post-processing: distort the audio programmatically
 # ══════════════════════════════════════════════════════════════════════════════
 
 def apply_droid(audio: np.ndarray, carrier_hz: float = 80.0) -> np.ndarray:
-    """Ring modulation — сигнал умножается на синусоиду → металлический дроид."""
+    """Ring modulation — the signal is multiplied by a sine wave → metallic droid."""
     t = np.arange(len(audio)) / SAMPLE_RATE
     carrier = np.sin(2 * np.pi * carrier_hz * t)
     return (0.35 * audio + 0.65 * (audio * carrier)).astype(np.float32)
@@ -179,23 +179,23 @@ def apply_droid(audio: np.ndarray, carrier_hz: float = 80.0) -> np.ndarray:
 
 def apply_emotion(audio: np.ndarray, emotion: str) -> np.ndarray:
     if emotion == "dying":
-        # Pitch вниз + замедление → умирает от скуки
+        # Pitch down + slow down → dying of boredom
         audio = librosa.effects.pitch_shift(audio.astype(float), sr=SAMPLE_RATE, n_steps=-5)
         audio = librosa.effects.time_stretch(audio, rate=0.55)
 
     elif emotion == "excited":
-        # Pitch вверх + ускорение
+        # Pitch up + speed up
         audio = librosa.effects.pitch_shift(audio.astype(float), sr=SAMPLE_RATE, n_steps=3)
         audio = librosa.effects.time_stretch(audio, rate=1.25)
 
     elif emotion == "scared":
-        # Тремоло (дрожание амплитуды)
+        # Tremolo (amplitude wobble)
         t = np.arange(len(audio)) / SAMPLE_RATE
         tremolo = 1.0 + 0.35 * np.sin(2 * np.pi * 9 * t)
         audio = audio * tremolo
 
     elif emotion == "happy":
-        # Лёгкий pitch up
+        # Slight pitch up
         audio = librosa.effects.pitch_shift(audio.astype(float), sr=SAMPLE_RATE, n_steps=2)
 
     return audio.astype(np.float32)
@@ -207,7 +207,7 @@ def normalize(audio: np.ndarray) -> np.ndarray:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ГЛАВНАЯ ФУНКЦИЯ
+# MAIN FUNCTION
 # ══════════════════════════════════════════════════════════════════════════════
 
 def speak(
@@ -222,7 +222,7 @@ def speak(
     print(f"\n{'─'*60}")
     print(f"Input: '{text}'")
 
-    # Шаг 1: Пасхалки — если есть триггер, играем готовый файл
+    # Step 1: Easter eggs — if a trigger is present, play the ready-made file
     easter_egg_path = detect_easter_egg(text)
     if easter_egg_path and Path(easter_egg_path).exists():
         print(f"  ► Easter egg: {easter_egg_path}")
@@ -230,12 +230,12 @@ def speak(
         sf.write(output_path, audio, sr)
         return np.array(audio)
 
-    # Шаг 2: Определяем эмоцию
+    # Step 2: Detect emotion
     emotion = detect_emotion(text)
     if emotion != "neutral":
         print(f"  ► Emotion detected: {emotion}")
 
-    # Шаг 3: Text Layer
+    # Step 3: Text Layer
     processed = text
     if stutter:
         processed = apply_stutter(processed)
@@ -243,10 +243,10 @@ def speak(
         processed = apply_russian_accent(processed)
     show_phoneme_layer(text)
 
-    # Шаг 4: TTS синтез
+    # Step 4: TTS synthesis
     audio = model.synthesize(processed)
 
-    # Шаг 5: Аудио эффекты
+    # Step 5: Audio effects
     if emotion != "neutral":
         audio = apply_emotion(audio, emotion)
     if droid:
@@ -260,7 +260,7 @@ def speak(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ТОЧКА ВХОДА — демо тесты
+# ENTRY POINT — demo tests
 # ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":

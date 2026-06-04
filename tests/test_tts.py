@@ -1,4 +1,4 @@
-"""Минимальный тест — проверяем что модель вообще генерирует звук."""
+"""Minimal test — check that the model produces sound at all."""
 import torch
 import numpy as np
 import zipfile
@@ -12,7 +12,7 @@ MODELS_DIR = str(ROOT / "models")
 
 
 def load_speaker_embedding(models_dir: str) -> torch.Tensor:
-    """Загружает xvector женского голоса (slt) из zip датасета."""
+    """Load the xvector of a female voice (slt) from the dataset zip."""
     zip_path = hf_hub_download(
         repo_id="Matthijs/cmu-arctic-xvectors",
         filename="spkrec-xvect.zip",
@@ -20,7 +20,7 @@ def load_speaker_embedding(models_dir: str) -> torch.Tensor:
         cache_dir=models_dir,
     )
     with zipfile.ZipFile(zip_path) as zf:
-        # Берём первый файл голоса slt (женский, похож на LJSpeech)
+        # Take the first slt voice file (female, similar to LJSpeech)
         slt_files = [n for n in zf.namelist() if "cmu_us_slt" in n and n.endswith(".npy")]
         with zf.open(slt_files[0]) as f:
             xvector = np.load(f)
