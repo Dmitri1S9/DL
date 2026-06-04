@@ -23,17 +23,17 @@ def compute_wer(audio_paths: list[str], reference_texts: list[str]) -> float:
     import whisper
     from jiwer import wer
 
-    model = whisper.load_model("base")
+    model = whisper.load_model('base')
     hypotheses = []
 
     for path in audio_paths:
-        result = model.transcribe(path, language="en")
-        hypotheses.append(result["text"].strip().lower())
+        result = model.transcribe(path, language='en')
+        hypotheses.append(result['text'].strip().lower())
 
     references = [t.lower() for t in reference_texts]
     score = wer(references, hypotheses)
 
-    print(f"WER: {score:.4f} ({score * 100:.1f}%)")
+    print(f'WER: {score:.4f} ({score * 100:.1f}%)')
     return score
 
 
@@ -61,7 +61,7 @@ def compute_mcd(ref_audio: np.ndarray, gen_audio: np.ndarray, sr: int = 16000) -
     diff = ref_mfcc[1:] - gen_mfcc[1:]
     mcd = (10 / np.log(10)) * np.sqrt(2) * np.mean(np.sqrt(np.sum(diff**2, axis=0)))
 
-    print(f"MCD: {mcd:.4f} dB")
+    print(f'MCD: {mcd:.4f} dB')
     return mcd
 
 
@@ -71,8 +71,8 @@ def evaluate_test_set(
     texts_file: str,
 ) -> dict:
     """Compute WER and the average MCD over the whole test set."""
-    gen_files = sorted(Path(generated_dir).glob("*.wav"))
-    ref_files = sorted(Path(reference_dir).glob("*.wav"))
+    gen_files = sorted(Path(generated_dir).glob('*.wav'))
+    ref_files = sorted(Path(reference_dir).glob('*.wav'))
     texts = Path(texts_file).read_text().splitlines()
 
     mcd_scores = []
@@ -84,16 +84,16 @@ def evaluate_test_set(
     wer_score = compute_wer([str(p) for p in gen_files], texts)
     avg_mcd = float(np.mean(mcd_scores))
 
-    results = {"WER": wer_score, "MCD": avg_mcd}
-    print(f"\n{'─' * 40}")
-    print(f"  WER (lower=better): {wer_score:.4f}")
-    print(f"  MCD (lower=better): {avg_mcd:.4f} dB")
+    results = {'WER': wer_score, 'MCD': avg_mcd}
+    print(f'\n{"─" * 40}')
+    print(f'  WER (lower=better): {wer_score:.4f}')
+    print(f'  MCD (lower=better): {avg_mcd:.4f} dB')
     return results
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # Example usage
     ROOT = Path(__file__).resolve().parents[2]
-    ref, _ = sf.read(str(ROOT / "data/sample_ref.wav"))
-    gen, _ = sf.read(str(ROOT / "audio/demo_1_normal.wav"))
+    ref, _ = sf.read(str(ROOT / 'data/sample_ref.wav'))
+    gen, _ = sf.read(str(ROOT / 'audio/demo_1_normal.wav'))
     compute_mcd(np.array(ref), np.array(gen))
