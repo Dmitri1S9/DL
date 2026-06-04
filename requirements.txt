@@ -15,3 +15,4 @@ sentencepiece==0.2.1
 loguru==0.7.3
 pydantic==2.13.4
 openai-whisper==20250625  # ASR for the WER/CER intelligibility metric
+pymcd==0.2.1  # canonical MCD (DTW + WORLD mel-cepstral) for the spectral metric

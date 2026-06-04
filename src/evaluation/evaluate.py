@@ -12,13 +12,18 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-import soundfile as sf
 
 from core import config
 from core.contracts import read_manifest
 from core.dto import EvalResult
 from core.logger import logger
 from evaluation.metrics import compute_cer, compute_mcd, compute_wer
+
+
+def _mean_mcd(scores: list[float]) -> float | None:
+    """Average MCD over the clips that scored (NaN = a per-clip failure)."""
+    valid = [s for s in scores if not np.isnan(s)]
+    return float(np.mean(valid)) if valid else None
 
 
 def evaluate(
@@ -41,16 +46,18 @@ def evaluate(
             continue
         gen_paths.append(str(gen))
         texts.append(item.text)
-        ref_audio, _ = sf.read(item.ref_audio)
-        gen_audio, _ = sf.read(str(gen))
-        mcd_scores.append(compute_mcd(np.asarray(ref_audio), np.asarray(gen_audio)))
+        try:
+            mcd_scores.append(compute_mcd(item.ref_audio, str(gen)))
+        except Exception as exc:
+            logger.warning(f'MCD failed for {item.id}: {exc}')
+            mcd_scores.append(float('nan'))
 
     result = EvalResult(
         label=label,
         n=len(gen_paths),
         wer=compute_wer(gen_paths, texts) if compute_asr else None,
         cer=compute_cer(gen_paths, texts) if compute_asr else None,
-        mcd=float(np.mean(mcd_scores)) if mcd_scores else None,
+        mcd=_mean_mcd(mcd_scores),
     )
     logger.success(f'[{label}] scored {result.n} clips: {result.model_dump()}')
     return result

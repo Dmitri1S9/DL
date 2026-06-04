@@ -2,16 +2,12 @@
 
 WER / CER — Word / Character Error Rate: how well an ASR model (Whisper)
             transcribes our generated audio back to the original text.
-MCD       — Mel Cepstral Distortion: how close the generated mel-spectrogram is
-            to the reference recording.
+MCD       — Mel Cepstral Distortion (via pymcd): DTW-aligned mel-cepstral
+            distance between generated and reference audio.
 
 These are the primitives; the manifest-driven runner lives in evaluation.evaluate.
 """
 
-import librosa
-import numpy as np
-
-from core import config
 from core.logger import logger
 
 
@@ -48,24 +44,13 @@ def compute_cer(audio_paths: list[str], reference_texts: list[str]) -> float:
     return score
 
 
-def compute_mcd(
-    ref_audio: np.ndarray,
-    gen_audio: np.ndarray,
-    sr: int = config.SAMPLE_RATE,
-) -> float:
-    """Mel Cepstral Distortion between reference and generated audio (in dB)."""
+def compute_mcd(ref_path: str, gen_path: str) -> float:
+    """Mel Cepstral Distortion (dB) between two wav files, DTW-aligned.
 
-    def extract_mfcc(audio: np.ndarray) -> np.ndarray:
-        return librosa.feature.mfcc(y=audio.astype(float), sr=sr, n_mfcc=24)
+    Uses pymcd (WORLD mel-cepstral analysis + DTW), so values land on the canonical
+    MCD scale (~5-8 dB is typical for decent TTS). Lower = better. Takes file paths
+    because pymcd reads the audio itself.
+    """
+    from pymcd.mcd import Calculate_MCD
 
-    ref_mfcc = extract_mfcc(ref_audio)
-    gen_mfcc = extract_mfcc(gen_audio)
-
-    # Align lengths
-    min_len = min(ref_mfcc.shape[1], gen_mfcc.shape[1])
-    ref_mfcc = ref_mfcc[:, :min_len]
-    gen_mfcc = gen_mfcc[:, :min_len]
-
-    # MCD formula (excluding the zeroth coefficient)
-    diff = ref_mfcc[1:] - gen_mfcc[1:]
-    return (10 / np.log(10)) * np.sqrt(2) * np.mean(np.sqrt(np.sum(diff**2, axis=0)))
+    return float(Calculate_MCD(MCD_mode='dtw').calculate_mcd(ref_path, gen_path))
