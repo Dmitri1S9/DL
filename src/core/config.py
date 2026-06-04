@@ -36,5 +36,15 @@ TEST_SIZE = 500  # last N clips held out as the test set
 
 # ── Training (consumed by model.train) ──────────────────────────────────────────
 NUM_EPOCHS = 5
-BATCH_SIZE = 8
+BATCH_SIZE = 8  # lower to ~4 (and raise GRAD_ACCUM) if the Colab GPU runs out of VRAM
 LEARNING_RATE = 1e-5
+GRAD_ACCUM = 8  # effective batch = BATCH_SIZE * GRAD_ACCUM
+MAX_STEPS = 4000  # tutorial-scale budget; scale down for a quicker first run
+WARMUP_STEPS = 500
+EVAL_STEPS = 1000
+SAVE_STEPS = 1000
+LOGGING_STEPS = 25
+FP16 = True  # mixed precision (GPU only)
+MAX_TOKENS = 200  # drop training examples whose tokenized text exceeds this
+VAL_SIZE = 200  # clips carved off the train split for the trainer's eval
+XVECTOR_DIM = 512  # speaker x-vector dimensionality

@@ -47,9 +47,19 @@ class TTSModel:
         )
         logger.info(f'Loading SpeechT5 from {source!r} on {self.device}...')
 
-        self.processor = SpeechT5Processor.from_pretrained(
-            config.TTS_MODEL_ID, cache_dir=str(config.MODELS_DIR)
-        )
+        # Load the processor from the checkpoint dir when a fine-tuned model saved
+        # one there; fall back to the base model otherwise.
+        try:
+            self.processor = SpeechT5Processor.from_pretrained(
+                source,
+                cache_dir=str(config.MODELS_DIR),
+            )
+        except (OSError, ValueError):
+            self.processor = SpeechT5Processor.from_pretrained(
+                config.TTS_MODEL_ID,
+                cache_dir=str(config.MODELS_DIR),
+            )
+
         self.model = SpeechT5ForTextToSpeech.from_pretrained(
             source, cache_dir=str(config.MODELS_DIR)
         ).to(self.device)

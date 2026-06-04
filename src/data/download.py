@@ -15,7 +15,13 @@ def download_ljspeech():
     logger.info('Downloading LJSpeech from HuggingFace...')
     logger.info('(~2.6GB, this will take a few minutes)')
 
-    dataset = load_dataset(config.DATASET_ID, split='train', cache_dir=DATA_DIR)
+    # trust_remote_code: keithito/lj_speech is a script-based dataset (needs datasets<4).
+    dataset = load_dataset(
+        config.DATASET_ID,
+        split='train',
+        cache_dir=DATA_DIR,
+        trust_remote_code=True,
+    )
 
     logger.info(f'Total samples: {len(dataset)}')
     logger.info(f'Columns: {dataset.column_names}')

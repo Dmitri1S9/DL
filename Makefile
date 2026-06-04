@@ -2,7 +2,8 @@
 # Modules live under src/ and import each other as top-level packages
 # (e.g. `from core.logger import logger`), so every run sets PYTHONPATH=src.
 
-PYTHON ?= python3
+# Use the project venv's Python once `make install` has created it, else the system one.
+PYTHON ?= $(shell [ -x .venv/bin/python ] && echo .venv/bin/python || echo python3)
 RUN    := PYTHONPATH=src $(PYTHON)
 
 # Overridable knobs:  make generate CKPT=models/finetuned   make eval MOCK=--mock
