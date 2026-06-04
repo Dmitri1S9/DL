@@ -10,10 +10,13 @@ from pathlib import Path
 import librosa
 import numpy as np
 import soundfile as sf
+from g2p_en import G2p
 
 from core import config
 from core.logger import logger
 from model.synthesize import TTSModel
+
+_g2p = G2p()
 
 SAMPLE_RATE = config.SAMPLE_RATE
 AUDIO_DIR = str(config.AUDIO_DIR)
@@ -56,6 +59,77 @@ RUSSIAN_ACCENT: list[tuple[str, str]] = [
     ('h ', ' '),  # drop aspiration at end
     ('  ', ' '),  # remove double spaces
 ]
+
+# ARPAbet phoneme-level substitutions for Russian accent simulation.
+# None = drop phoneme entirely.
+# Context-dependent rules (final devoicing, NG->NGK) live in phoneme.apply_accent.
+ACCENT_MAP_PHONEME: dict[str, str | None] = {
+    # ── Consonants ────────────────────────────────────────────────────────────
+    'DH': 'Z',   # voiced th  "the"    -> "ze"
+    'TH': 'Z',   # voiceless  "think"  -> "zink"
+    'W':  'V',   # "we"       -> "ve",  "would" -> "vud"
+    'HH': None,  # drop aspiration:     "have"  -> "av"
+
+    # ── Vowels — Russian flattens English diphthongs ──────────────────────────
+    'AE': 'EH',  # /æ/ "cat"  -> /ɛ/ "cet"   (no near-open front vowel in Russian)
+    'OW': 'AO',  # /oʊ/ "go"  -> /o/ pure     (no glide, Russian O is pure)
+    'EY': 'EH',  # /eɪ/ "say" -> /e/ pure     (no glide)
+    'AW': 'AO',  # /aʊ/ "how" -> /o/          (collapse to O)
+    'OY': 'AO',  # /ɔɪ/ "boy" -> /o/          (collapse)
+
+    # ── Unstressed vowel reduction ────────────────────────────────────────────
+    # Russian strongly reduces unstressed vowels -> AH (schwa) everywhere
+    # (applied only to the already-unstressed AX; full AH we keep)
+}
+
+# Final devoicing: voiced consonant at word-end -> voiceless equivalent
+# "bad"->"bat", "bag"->"bak", "love"->"lof", "his"->"hiss"
+_DEVOICE: dict[str, str] = {'D': 'T', 'B': 'P', 'G': 'K', 'Z': 'S', 'V': 'F'}
+
+
+def text_to_phonemes(text: str) -> list[str]:
+    """Convert English text to ARPAbet tokens (stress digits stripped)."""
+    raw = _g2p(text)
+    return [p.rstrip('012') if p != ' ' else ' ' for p in raw]
+
+
+def apply_accent_phonemes(phonemes: list[str]) -> list[str]:
+    """Apply ACCENT_MAP_PHONEME + NG->NGK + final devoicing to a phoneme list."""
+    result: list[str] = []
+    i = 0
+    while i < len(phonemes):
+        p = phonemes[i]
+        next_p = phonemes[i + 1] if i + 1 < len(phonemes) else ' '
+        at_word_end = next_p == ' ' or i + 1 == len(phonemes)
+
+        if at_word_end and p in _DEVOICE:
+            result.append(_DEVOICE[p])
+            i += 1
+            continue
+
+        if p in ACCENT_MAP_PHONEME:
+            replacement = ACCENT_MAP_PHONEME[p]
+            if replacement is not None:
+                result.append(replacement)
+            i += 1
+            continue
+
+        result.append(p)
+
+        if p == 'NG' and at_word_end:
+            result.append('K')
+
+        i += 1
+    return result
+
+
+def phonemes_to_str(phonemes: list[str]) -> str:
+    return ' '.join(p for p in phonemes if p != ' ').strip()
+
+
+def process_text_phonemic(text: str) -> str:
+    """Full phoneme pipeline: text -> ARPAbet -> accent -> phoneme string."""
+    return phonemes_to_str(apply_accent_phonemes(text_to_phonemes(text)))
 
 
 def apply_russian_accent(text: str) -> str:
@@ -107,6 +181,55 @@ def apply_droid(audio: np.ndarray, carrier_hz: float = 80.0) -> np.ndarray:
     t = np.arange(len(audio)) / SAMPLE_RATE
     carrier = np.sin(2 * np.pi * carrier_hz * t)
     return (0.35 * audio + 0.65 * (audio * carrier)).astype(np.float32)
+
+
+def apply_b1_droid(audio: np.ndarray) -> np.ndarray:
+    """B1 battle droid — DSP chain based on actual Dalek/B1 ring mod technique.
+
+    Key insight: carrier is 35-45 Hz (sub-bass buzz), NOT hundreds of Hz.
+    That low carrier creates the characteristic B1 drone while keeping speech
+    intelligible. Same principle as Daleks (30 Hz carrier).
+
+    Chain:
+      1. Ring mod 40 Hz          — main droid buzz
+      2. Pitch shift +3 semitones — B1 is higher/more nasal than human voice
+      3. Bandpass 250-6000 Hz    — telephone-thin timbre
+      4. Presence boost 2.5 kHz  — nasal "tin" character
+      5. Soft clip (tanh)        — digital edge
+      6. Comb filter 5 ms        — metallic box resonance
+    """
+    from scipy.signal import butter, sosfilt
+
+    x = audio.astype(np.float64)
+
+    # 1. Ring modulation at 40 Hz
+    t = np.arange(len(x)) / SAMPLE_RATE
+    carrier = np.sin(2 * np.pi * 40.0 * t)
+    y = x * carrier
+
+    # 2. Pitch shift +3 semitones
+    y = librosa.effects.pitch_shift(y.astype(np.float32), sr=SAMPLE_RATE, n_steps=3).astype(np.float64)
+
+    # 3. Bandpass 250-6000 Hz
+    sos_band = butter(4, [250, 6000], btype='band', fs=SAMPLE_RATE, output='sos')
+    y = sosfilt(sos_band, y)
+
+    # 4. Presence boost at 2.5 kHz (peaking EQ via narrow bandpass blend)
+    sos_presence = butter(2, [2000, 3500], btype='band', fs=SAMPLE_RATE, output='sos')
+    y = y + 0.4 * sosfilt(sos_presence, y)
+
+    # 5. Soft clipping
+    y = np.tanh(y * 2.5)
+
+    # 6. Comb filter — short delay (5 ms) + feedback for metallic resonance
+    delay_samples = int(0.005 * SAMPLE_RATE)
+    comb = y.copy()
+    for i in range(delay_samples, len(comb)):
+        comb[i] += 0.4 * comb[i - delay_samples]
+    y = comb
+
+    y /= np.max(np.abs(y)) + 1e-9
+    return y.astype(np.float32)
 
 
 def apply_emotion(audio: np.ndarray, emotion: str) -> np.ndarray:
