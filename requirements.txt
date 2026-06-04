@@ -1,18 +1,26 @@
-# Exact, pinned versions — verified working together end-to-end (real synthesis,
-# Whisper eval, and the LJSpeech download). Re-pin from a known-good venv with:
-#     .venv/bin/pip freeze
-torch==2.12.0
-torchaudio==2.11.0
-transformers==5.10.1
-datasets==3.6.0  # <4: 4.x removed dataset-loading scripts; keithito/lj_speech needs them
+# Exact, pinned versions — verified working together end-to-end (VITS synthesis,
+# Whisper eval, LJSpeech download, B1 RVC augmentation). Re-pin from a known-good
+# venv with:  .venv/Scripts/pip freeze
+#
+# System dependency (NOT pip): espeak-ng 1.52.0 must be installed separately.
+# Windows: winget install espeak-ng.espeak-ng
+# Linux:   apt install espeak-ng
+# Required by phonemizer (VITS tokenizer).
+
+torch==2.11.0+cu128        # GPU build for RTX 5060 / CUDA 12.9
+torchaudio==2.11.0+cu128
+transformers==5.9.0
+datasets==3.6.0            # <4: 4.x removed dataset-loading scripts; keithito/lj_speech needs them
 soundfile==0.13.1
 librosa==0.11.0
 numpy==2.4.6
 scipy==1.17.1
 jiwer==4.0.0
 accelerate==1.13.0
-sentencepiece==0.2.1
 loguru==0.7.3
 pydantic==2.13.4
-openai-whisper==20250625  # ASR for the WER/CER intelligibility metric
-pymcd==0.2.1  # canonical MCD (DTW + WORLD mel-cepstral) for the spectral metric
+phonemizer==3.3.0          # IPA phonemization for VITS tokenizer (needs espeak-ng system lib)
+pedalboard==0.9.23         # Spotify DSP effects library (used in effects.py)
+g2p_en==2.1.0              # grapheme-to-phoneme (ARPAbet) for phoneme-level accent substitution
+openai-whisper==20250625   # ASR for the WER/CER intelligibility metric
+pymcd==0.2.1               # canonical MCD (DTW + WORLD mel-cepstral) for the spectral metric

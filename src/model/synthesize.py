@@ -1,15 +1,16 @@
-"""Speech synthesis: load a SpeechT5 checkpoint and turn text into audio.
+"""Speech synthesis: VITS (kakao-enterprise/vits-ljs) → waveform.
 
-The real path loads SpeechT5 (text -> mel) + HiFi-GAN (mel -> wav). The ``mock``
-path returns a cheap sine wave so the whole pipeline (and CI) runs end-to-end
-without downloading ~2 GB of weights or needing a GPU.
+VITS is end-to-end: text → waveform in one model, no separate vocoder or speaker
+embeddings. Trained on LJSpeech — matches our training data. Quality is noticeably
+better than SpeechT5 + HiFi-GAN.
 
-The ``checkpoint`` argument is the swap point of the whole project:
+Requires espeak-ng installed system-wide (phonemizer backend for the tokenizer):
+  Windows: winget install espeak-ng.espeak-ng
+  Linux:   apt install espeak-ng
 
-    config.PRETRAINED  -> the base microsoft/speecht5_tts, as-is
-    <a directory>      -> a fine-tuned checkpoint produced by model.train
+The mock path returns a sine wave for offline/CI use without model weights.
 
-Generated wavs follow the contract: ``<out_dir>/<id>.wav``, 16 kHz mono float32.
+Contract: <out_dir>/<id>.wav, 22050 Hz mono float32 (VITS native sample rate).
 """
 
 import argparse
@@ -19,71 +20,52 @@ import numpy as np
 import soundfile as sf
 
 from core import config
+
+# espeak-ng DLL required by phonemizer (VITS tokenizer) on Windows
+_ESPEAK_DLL = r'C:\Program Files\eSpeak NG\libespeak-ng.dll'
+try:
+    from phonemizer.backend.espeak.espeak import EspeakBackend
+    EspeakBackend.set_library(_ESPEAK_DLL)
+except Exception:
+    pass
 from core.contracts import read_manifest
 from core.logger import logger
 
+VITS_SAMPLE_RATE = 22050
+
 
 class TTSModel:
-    """Wraps SpeechT5 + HiFi-GAN behind a single ``synthesize(text)`` call.
-
-    Heavy imports (torch/transformers) are done lazily inside ``__init__`` so the
-    module — and the ``mock`` synthesis path — stay importable without them.
-    """
+    """Wraps VITS behind a single ``synthesize(text)`` call."""
 
     def __init__(self, checkpoint: str = config.PRETRAINED):
         import torch
-        from transformers import (
-            SpeechT5ForTextToSpeech,
-            SpeechT5HifiGan,
-            SpeechT5Processor,
-        )
-
-        from model.speaker import load_speaker_embedding
+        from transformers import VitsModel, AutoTokenizer
 
         self._torch = torch
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        source = (
-            config.TTS_MODEL_ID if checkpoint == config.PRETRAINED else str(checkpoint)
+        source = config.TTS_MODEL_ID if checkpoint == config.PRETRAINED else str(checkpoint)
+        logger.info(f'Loading VITS from {source!r} on {self.device}...')
+
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            source, cache_dir=str(config.MODELS_DIR)
         )
-        logger.info(f'Loading SpeechT5 from {source!r} on {self.device}...')
-
-        # Load the processor from the checkpoint dir when a fine-tuned model saved
-        # one there; fall back to the base model otherwise.
-        try:
-            self.processor = SpeechT5Processor.from_pretrained(
-                source,
-                cache_dir=str(config.MODELS_DIR),
-            )
-        except (OSError, ValueError):
-            self.processor = SpeechT5Processor.from_pretrained(
-                config.TTS_MODEL_ID,
-                cache_dir=str(config.MODELS_DIR),
-            )
-
-        self.model = SpeechT5ForTextToSpeech.from_pretrained(
+        self.model = VitsModel.from_pretrained(
             source, cache_dir=str(config.MODELS_DIR)
         ).to(self.device)
-        self.vocoder = SpeechT5HifiGan.from_pretrained(
-            config.VOCODER_ID, cache_dir=str(config.MODELS_DIR)
-        ).to(self.device)
-        self.speaker_embeddings = load_speaker_embedding().to(self.device)
-        logger.success('TTS model ready.')
+        self.model.eval()
+        logger.success('VITS model ready.')
 
     def synthesize(self, text: str) -> np.ndarray:
-        inputs = self.processor(text=text, return_tensors='pt').to(self.device)
+        inputs = self.tokenizer(text, return_tensors='pt').to(self.device)
         with self._torch.no_grad():
-            speech = self.model.generate_speech(
-                inputs['input_ids'],
-                self.speaker_embeddings,
-                vocoder=self.vocoder,
-            )
-        return speech.cpu().numpy().astype(np.float32)
+            output = self.model(**inputs).waveform
+        return output.squeeze().cpu().numpy().astype(np.float32)
 
 
 def mock_synthesize(text: str) -> np.ndarray:
     """Deterministic sine whose length scales with the text — no model needed."""
     seconds = max(0.4, 0.06 * len(text))
-    n = int(seconds * config.SAMPLE_RATE)
+    n = int(seconds * VITS_SAMPLE_RATE)
     t = np.linspace(0.0, seconds, n, endpoint=False)
     return (0.1 * np.sin(2 * np.pi * 220.0 * t)).astype(np.float32)
 
@@ -100,11 +82,12 @@ def generate_for_manifest(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     synth = mock_synthesize if mock else TTSModel(checkpoint).synthesize
+    sr = VITS_SAMPLE_RATE
     tag = 'mock' if mock else checkpoint
     logger.info(f'Synthesizing {len(items)} clips ({tag}) -> {out_dir}')
     for item in items:
         wav = synth(item.text)
-        sf.write(str(out_dir / f'{item.id}.wav'), wav, config.SAMPLE_RATE)
+        sf.write(str(out_dir / f'{item.id}.wav'), wav, sr)
     logger.success(f'Wrote {len(items)} wavs to {out_dir}')
     return out_dir
 
@@ -115,16 +98,8 @@ def main() -> None:
     )
     parser.add_argument('--manifest', type=Path, default=config.TEST_MANIFEST)
     parser.add_argument('--out', type=Path, default=config.GENERATED_DIR)
-    parser.add_argument(
-        '--checkpoint',
-        default=config.PRETRAINED,
-        help=f'"{config.PRETRAINED}" or a fine-tuned checkpoint directory',
-    )
-    parser.add_argument(
-        '--mock',
-        action='store_true',
-        help='Use a sine-wave stub instead of loading the real model',
-    )
+    parser.add_argument('--checkpoint', default=config.PRETRAINED)
+    parser.add_argument('--mock', action='store_true')
     args = parser.parse_args()
     generate_for_manifest(args.manifest, args.out, args.checkpoint, args.mock)
 

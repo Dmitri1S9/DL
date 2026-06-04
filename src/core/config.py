@@ -22,9 +22,9 @@ GENERATED_DIR = AUDIO_DIR / 'generated'  # our synthesized wavs
 SAMPLE_RATE = 16000
 
 # ── Models (HuggingFace ids) ────────────────────────────────────────────────────
-TTS_MODEL_ID = 'microsoft/speecht5_tts'  # acoustic model: text -> mel
-VOCODER_ID = 'microsoft/speecht5_hifigan'  # vocoder: mel -> waveform
-SPEAKER_XVECTOR_REPO = 'Matthijs/cmu-arctic-xvectors'
+TTS_MODEL_ID = 'kakao-enterprise/vits-ljs'   # VITS end-to-end, trained on LJSpeech
+VOCODER_ID = 'microsoft/speecht5_hifigan'    # legacy SpeechT5 vocoder — not used by VITS
+SPEAKER_XVECTOR_REPO = 'Matthijs/cmu-arctic-xvectors'  # legacy — not used by VITS
 
 # ── Checkpoints ─────────────────────────────────────────────────────────────────
 PRETRAINED = 'pretrained'  # sentinel: use the base model as-is
