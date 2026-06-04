@@ -17,10 +17,10 @@ import zipfile
 from huggingface_hub import hf_hub_download
 from transformers import SpeechT5Processor, SpeechT5ForTextToSpeech, SpeechT5HifiGan
 
-ROOT        = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_RATE = 16000
-MODELS_DIR  = str(ROOT / "models")
-AUDIO_DIR   = str(ROOT / "audio")
+MODELS_DIR = str(ROOT / "models")
+AUDIO_DIR = str(ROOT / "audio")
 
 Path(AUDIO_DIR).mkdir(exist_ok=True)
 
@@ -34,7 +34,9 @@ def load_speaker_embedding(models_dir: str = MODELS_DIR) -> torch.Tensor:
         cache_dir=models_dir,
     )
     with zipfile.ZipFile(zip_path) as zf:
-        slt_files = [n for n in zf.namelist() if "cmu_us_slt" in n and n.endswith(".npy")]
+        slt_files = [
+            n for n in zf.namelist() if "cmu_us_slt" in n and n.endswith(".npy")
+        ]
         with zf.open(slt_files[0]) as f:
             xvector = np.load(f)
     return torch.tensor(xvector).unsqueeze(0)
@@ -48,39 +50,39 @@ def load_speaker_embedding(models_dir: str = MODELS_DIR) -> torch.Tensor:
 
 # Trigger words for easter eggs: if the text contains one → play the file
 EASTER_EGGS: dict[str, str] = {
-    "yamete kudasai":   f"{AUDIO_DIR}/yamete.wav",
-    "やめてください":    f"{AUDIO_DIR}/yamete.wav",
-    "order 66":         f"{AUDIO_DIR}/order66.wav",
+    "yamete kudasai": f"{AUDIO_DIR}/yamete.wav",
+    "やめてください": f"{AUDIO_DIR}/yamete.wav",
+    "order 66": f"{AUDIO_DIR}/order66.wav",
 }
 
 # Trigger words for emotions
 EMOTION_WORDS: dict[str, str] = {
-    "socialism":    "dying",
-    "communism":    "dying",
-    "bureaucracy":  "dying",
-    "capitalism":   "excited",
-    "freedom":      "excited",
-    "death":        "scared",
-    "horror":       "scared",
-    "love":         "happy",
-    "amazing":      "happy",
+    "socialism": "dying",
+    "communism": "dying",
+    "bureaucracy": "dying",
+    "capitalism": "excited",
+    "freedom": "excited",
+    "death": "scared",
+    "horror": "scared",
+    "love": "happy",
+    "amazing": "happy",
 }
 
 # Substitutions for a Russian accent: English → how a Russian speaker would say it
 RUSSIAN_ACCENT: list[tuple[str, str]] = [
-    ("the ",    "ze "),
-    ("The ",    "Ze "),
-    (" a ",     " "),           # drop the article
-    (" an ",    " "),
-    ("th",      "z"),           # "this" → "zis"
-    ("Th",      "Z"),
-    ("w",       "v"),           # "we" → "ve"
-    ("W",       "V"),
-    ("ing ",    "ink "),        # "going" → "goink"
-    ("tion",    "shon"),        # "nation" → "nashon"
-    ("ould",    "ud"),          # "would" → "vud"
-    ("h ",      " "),           # drop aspiration at end
-    ("  ",      " "),           # remove double spaces
+    ("the ", "ze "),
+    ("The ", "Ze "),
+    (" a ", " "),  # drop the article
+    (" an ", " "),
+    ("th", "z"),  # "this" → "zis"
+    ("Th", "Z"),
+    ("w", "v"),  # "we" → "ve"
+    ("W", "V"),
+    ("ing ", "ink "),  # "going" → "goink"
+    ("tion", "shon"),  # "nation" → "nashon"
+    ("ould", "ud"),  # "would" → "vud"
+    ("h ", " "),  # drop aspiration at end
+    ("  ", " "),  # remove double spaces
 ]
 
 
@@ -131,6 +133,7 @@ def detect_emotion(text: str) -> str:
 # HiFi-GAN: mel-spectrogram → wav   (vocoder)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TTSModel:
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -170,6 +173,7 @@ class TTSModel:
 # Post-processing: distort the audio programmatically
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def apply_droid(audio: np.ndarray, carrier_hz: float = 80.0) -> np.ndarray:
     """Ring modulation — the signal is multiplied by a sine wave → metallic droid."""
     t = np.arange(len(audio)) / SAMPLE_RATE
@@ -180,12 +184,16 @@ def apply_droid(audio: np.ndarray, carrier_hz: float = 80.0) -> np.ndarray:
 def apply_emotion(audio: np.ndarray, emotion: str) -> np.ndarray:
     if emotion == "dying":
         # Pitch down + slow down → dying of boredom
-        audio = librosa.effects.pitch_shift(audio.astype(float), sr=SAMPLE_RATE, n_steps=-5)
+        audio = librosa.effects.pitch_shift(
+            audio.astype(float), sr=SAMPLE_RATE, n_steps=-5
+        )
         audio = librosa.effects.time_stretch(audio, rate=0.55)
 
     elif emotion == "excited":
         # Pitch up + speed up
-        audio = librosa.effects.pitch_shift(audio.astype(float), sr=SAMPLE_RATE, n_steps=3)
+        audio = librosa.effects.pitch_shift(
+            audio.astype(float), sr=SAMPLE_RATE, n_steps=3
+        )
         audio = librosa.effects.time_stretch(audio, rate=1.25)
 
     elif emotion == "scared":
@@ -196,7 +204,9 @@ def apply_emotion(audio: np.ndarray, emotion: str) -> np.ndarray:
 
     elif emotion == "happy":
         # Slight pitch up
-        audio = librosa.effects.pitch_shift(audio.astype(float), sr=SAMPLE_RATE, n_steps=2)
+        audio = librosa.effects.pitch_shift(
+            audio.astype(float), sr=SAMPLE_RATE, n_steps=2
+        )
 
     return audio.astype(np.float32)
 
@@ -210,16 +220,17 @@ def normalize(audio: np.ndarray) -> np.ndarray:
 # MAIN FUNCTION
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def speak(
-    text:           str,
-    model:          TTSModel,
+    text: str,
+    model: TTSModel,
     russian_accent: bool = True,
-    droid:          bool = True,
-    stutter:        bool = False,
-    output_path:    str  = f"{AUDIO_DIR}/output.wav",
+    droid: bool = True,
+    stutter: bool = False,
+    output_path: str = f"{AUDIO_DIR}/output.wav",
 ) -> np.ndarray:
 
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     print(f"Input: '{text}'")
 
     # Step 1: Easter eggs — if a trigger is present, play the ready-made file
@@ -267,15 +278,15 @@ if __name__ == "__main__":
     model = TTSModel()
 
     demos = [
-        ("Hello, I am a robot from outer space.",          "demo_1_normal.wav"),
-        ("The weather is quite wonderful today.",           "demo_2_accent.wav"),
-        ("I fully support socialism and its principles.",   "demo_3_dying.wav"),
+        ("Hello, I am a robot from outer space.", "demo_1_normal.wav"),
+        ("The weather is quite wonderful today.", "demo_2_accent.wav"),
+        ("I fully support socialism and its principles.", "demo_3_dying.wav"),
         ("This is amazing! I love freedom and capitalism.", "demo_4_excited.wav"),
-        ("Hello world.",                                    "demo_5_stutter.wav"),
+        ("Hello world.", "demo_5_stutter.wav"),
     ]
 
     for i, (text, fname) in enumerate(demos):
-        stutter = (i == 4)
+        stutter = i == 4
         speak(
             text,
             model,

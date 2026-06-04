@@ -1,0 +1,20 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [
+  ".venv",
+  "data",
+  "models",
+  "audio",
+]
+
+[tool.ruff.lint]
+# E/F/W  — pycodestyle + pyflakes (core errors)
+# B      — flake8-bugbear (likely bugs)
+# C4     — flake8-comprehensions
+# SIM    — flake8-simplify
+# RUF    — Ruff-specific rules
+select = ["E", "F", "W", "B", "C4", "SIM", "RUF"]
+ignore = [
+  "E501",  # line length is enforced by the formatter, not the linter
+]

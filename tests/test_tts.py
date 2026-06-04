@@ -1,4 +1,5 @@
 """Minimal test — check that the model produces sound at all."""
+
 import torch
 import numpy as np
 import zipfile
@@ -21,7 +22,9 @@ def load_speaker_embedding(models_dir: str) -> torch.Tensor:
     )
     with zipfile.ZipFile(zip_path) as zf:
         # Take the first slt voice file (female, similar to LJSpeech)
-        slt_files = [n for n in zf.namelist() if "cmu_us_slt" in n and n.endswith(".npy")]
+        slt_files = [
+            n for n in zf.namelist() if "cmu_us_slt" in n and n.endswith(".npy")
+        ]
         with zf.open(slt_files[0]) as f:
             xvector = np.load(f)
     print(f"Speaker embedding shape: {xvector.shape}  (from {slt_files[0]})")
@@ -29,13 +32,19 @@ def load_speaker_embedding(models_dir: str) -> torch.Tensor:
 
 
 print("Loading processor...")
-processor = SpeechT5Processor.from_pretrained("microsoft/speecht5_tts", cache_dir=MODELS_DIR)
+processor = SpeechT5Processor.from_pretrained(
+    "microsoft/speecht5_tts", cache_dir=MODELS_DIR
+)
 
 print("Loading model...")
-model = SpeechT5ForTextToSpeech.from_pretrained("microsoft/speecht5_tts", cache_dir=MODELS_DIR)
+model = SpeechT5ForTextToSpeech.from_pretrained(
+    "microsoft/speecht5_tts", cache_dir=MODELS_DIR
+)
 
 print("Loading vocoder...")
-vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan", cache_dir=MODELS_DIR)
+vocoder = SpeechT5HifiGan.from_pretrained(
+    "microsoft/speecht5_hifigan", cache_dir=MODELS_DIR
+)
 
 print("Loading speaker embeddings...")
 speaker_embeddings = load_speaker_embedding(MODELS_DIR)
@@ -46,7 +55,9 @@ inputs = processor(text=text, return_tensors="pt")
 print(f"Input ids shape: {inputs['input_ids'].shape}")
 
 with torch.no_grad():
-    speech = model.generate_speech(inputs["input_ids"], speaker_embeddings, vocoder=vocoder)
+    speech = model.generate_speech(
+        inputs["input_ids"], speaker_embeddings, vocoder=vocoder
+    )
 
 audio = speech.numpy()
 print(f"\nOutput shape: {audio.shape}")
