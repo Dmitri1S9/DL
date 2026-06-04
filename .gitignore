@@ -1,11 +1,14 @@
-# Модели (слишком большие для GitHub, скачиваются автоматически)
+# Models (too large for GitHub, downloaded automatically)
 models/
 
-# Виртуальное окружение
+# Virtual environment
 .venv/
 
-# Сгенерированное аудио (не нужно в репо)
+# Generated audio (not needed in the repo)
 audio/
+
+# Logs (created at runtime)
+logs/
 
 # Python
 __pycache__/
@@ -13,7 +16,7 @@ __pycache__/
 *.pyo
 *.egg-info/
 
-# Данные (скачиваются через download_data.py)
+# Data (downloaded via src/data.py)
 data/
 
 # IDE
