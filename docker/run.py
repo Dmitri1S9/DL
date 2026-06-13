@@ -7,6 +7,15 @@ Usage:
 """
 
 import sys, os, argparse, time, traceback
+
+# Parse OUR args first and strip them from sys.argv
+# so RVC's own argparse doesn't choke on --watch / --shard
+_parser = argparse.ArgumentParser(add_help=False)
+_parser.add_argument("--shard", nargs=2, type=int, metavar=("IDX", "TOTAL"))
+_parser.add_argument("--watch", action="store_true")
+_our_args, _remaining = _parser.parse_known_args()
+sys.argv = [sys.argv[0]] + _remaining  # RVC only sees the rest
+
 sys.path = [p for p in sys.path if p not in ('', '/app')]
 sys.path.insert(0, '/rvc')
 os.chdir('/rvc')
@@ -75,71 +84,68 @@ def process_file(vc, wav_path: str, out_path: str) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--shard", nargs=2, type=int, metavar=("IDX", "TOTAL"),
-                        help="Process shard IDX of TOTAL (0-based). E.g. --shard 0 2")
-    args = parser.parse_args()
+    args = _our_args  # already parsed at module level, stripped from sys.argv
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    wavs = sorted([
-        f for f in os.listdir(INPUT_DIR) if f.lower().endswith(".wav")
-    ])
-    if not wavs:
-        print("No WAV files in /input/")
-        return
-
-    # Sharding
-    if args.shard:
-        idx, total = args.shard
-        wavs = [f for i, f in enumerate(wavs) if i % total == idx]
-        print(f"Shard {idx}/{total}: {len(wavs)} files")
-
-    # Resume — skip already processed
-    todo = [f for f in wavs if not os.path.exists(
-        os.path.join(OUTPUT_DIR, os.path.splitext(f)[0] + "_b1.wav")
-    )]
-    skipped = len(wavs) - len(todo)
-    print(f"Total: {len(wavs)} | Already done: {skipped} | To process: {len(todo)}")
-
-    if not todo:
-        print("All files already processed.")
-        return
-
-    print("Loading model...")
+    print("Loading model once...")
     vc = setup_model()
 
-    try:
-        from tqdm import tqdm
-    except ImportError:
-        os.system("pip install -q tqdm")
-        from tqdm import tqdm
+    idle_rounds = 0
+    while True:
+        wavs = sorted([f for f in os.listdir(INPUT_DIR) if f.lower().endswith(".wav")])
+        if args.shard:
+            idx, total = args.shard
+            wavs = [f for i, f in enumerate(wavs) if i % total == idx]
 
-    errors = []
-    t_start = time.time()
+        todo = [f for f in wavs if not os.path.exists(
+            os.path.join(OUTPUT_DIR, os.path.splitext(f)[0] + "_b1.wav")
+        )]
 
-    with open(ERROR_LOG, "a") as err_file:
-        for fname in tqdm(todo, unit="file"):
-            wav_path = os.path.join(INPUT_DIR, fname)
-            stem = os.path.splitext(fname)[0]
-            out_path = os.path.join(OUTPUT_DIR, f"{stem}_b1.wav")
-            try:
-                t0 = time.time()
-                process_file(vc, wav_path, out_path)
-                elapsed = time.time() - t0
-            except Exception as e:
-                msg = f"{fname}: {e}\n{traceback.format_exc()}\n"
-                err_file.write(msg)
-                err_file.flush()
-                errors.append(fname)
-                tqdm.write(f"ERROR: {fname} — {e}")
+        if not todo:
+            if not args.watch:
+                print("All files processed.")
+                return
+            idle_rounds += 1
+            if idle_rounds >= 4:  # 4 × 15s = 60s без новых файлов
+                print("No new files for 60s — done.")
+                return
+            print(f"No new files, waiting 15s... ({idle_rounds}/4)")
+            time.sleep(15)
+            continue
 
-    total_time = time.time() - t_start
-    done = len(todo) - len(errors)
-    print(f"\nDone: {done}/{len(todo)} files in {total_time:.0f}s")
-    print(f"Avg: {total_time/max(done,1):.1f}s/file")
-    if errors:
-        print(f"Errors: {len(errors)} — see {ERROR_LOG}")
+        idle_rounds = 0
+        skipped = len(wavs) - len(todo)
+        print(f"Found {len(todo)} new files (skipping {skipped} done)")
+
+        try:
+            from tqdm import tqdm
+        except ImportError:
+            os.system("pip install -q tqdm")
+            from tqdm import tqdm
+
+        errors = []
+        t_start = time.time()
+
+        with open(ERROR_LOG, "a") as err_file:
+            for fname in tqdm(todo, unit="file"):
+                wav_path = os.path.join(INPUT_DIR, fname)
+                stem = os.path.splitext(fname)[0]
+                out_path = os.path.join(OUTPUT_DIR, f"{stem}_b1.wav")
+                try:
+                    process_file(vc, wav_path, out_path)
+                except Exception as e:
+                    msg = f"{fname}: {e}\n{traceback.format_exc()}\n"
+                    err_file.write(msg)
+                    err_file.flush()
+                    errors.append(fname)
+                    tqdm.write(f"ERROR: {fname} — {e}")
+
+        total_time = time.time() - t_start
+        done = len(todo) - len(errors)
+        print(f"\nDone: {done}/{len(todo)} in {total_time:.0f}s | avg {total_time/max(done,1):.1f}s/file")
+        if errors:
+            print(f"Errors: {len(errors)} — see {ERROR_LOG}")
 
 
 if __name__ == "__main__":
