@@ -18,10 +18,10 @@ help:
 	@echo "  install   create .venv and install requirements + dev tools"
 	@echo "  data      download LJSpeech (~2.6GB)"
 	@echo "  prepare   build the test manifest + reference audio"
-	@echo "  train     fine-tune SpeechT5 (currently a MOCK)"
+	@echo "  train     fine-tune VITS via vits_finetune (in progress, see docs)"
 	@echo "  generate  synthesize the test set      [CKPT=, MOCK=--mock]"
 	@echo "  eval      score generated audio         [LABEL=, MOCK=--mock]"
-	@echo "  all       end-to-end on MOCKS (offline) — proves the wiring"
+	@echo "  all       prepare/generate/eval on MOCKS (offline) — proves the wiring"
 	@echo "  smoke     run the pytest smoke test"
 	@echo "  lint      ruff check       format  ruff format       clean  remove outputs"
 
@@ -36,7 +36,7 @@ prepare:
 	$(RUN) -m data.prepare
 
 train:
-	$(RUN) -m model.train
+	$(RUN) -m vits_finetune.train
 
 generate:
 	$(RUN) -m model.synthesize --checkpoint $(CKPT) $(MOCK)
@@ -44,8 +44,9 @@ generate:
 eval:
 	$(RUN) -m evaluation.evaluate --label $(LABEL) $(MOCK)
 
-# End-to-end on mocks: prepare -> train -> generate -> evaluate, fully offline.
-all: train
+# Core pipeline on mocks: prepare -> generate -> evaluate, fully offline.
+# (vits_finetune.train is excluded — it downloads a real dataset and is not a mock.)
+all:
 	$(RUN) -m data.prepare --mock
 	$(RUN) -m model.synthesize --mock
 	$(RUN) -m evaluation.evaluate --mock --label mock

@@ -47,7 +47,10 @@ src/
 ├── data/          download.py · prepare.py · prepare_training.py
 │                  bake_dataset.py · prepare_b1_dataset.py · push_b1_dataset.py
 │                  (B1 voice dataset pipeline — see "Training data" below)
-├── model/         synthesize.py · train.py · speaker.py (legacy, unused by VITS)
+├── model/         synthesize.py     (VITS inference, used by generate/eval)
+├── vits_finetune/ config.py · model_config.py · dataset.py · collate.py ·
+│                  audio.py · model.py · losses.py · checkpoint.py ·
+│                  train.py · synthesize.py   (VITS fine-tuning — in progress)
 ├── evaluation/    metrics.py · evaluate.py
 ├── effects/       effects.py        (fun voice effects — NOT in the eval path)
 └── tokenization/  tokenizer.py      (char vs phoneme study — stub)
@@ -77,7 +80,7 @@ Dependencies are pinned to exact, verified versions in `requirements.txt`. After
 | `make all` | **Offline mock** pipeline (no downloads, runs in seconds) — proves the wiring |
 | `make data` | Download LJSpeech (~2.6 GB, once) |
 | `make prepare` | Build the test set: manifest + 16 kHz reference audio |
-| `make train` | Fine-tune VITS *(currently a MOCK — see Status)* |
+| `make train` | Fine-tune VITS via `vits_finetune` *(in progress — see Status)* |
 | `make generate CKPT=models/finetuned` | Synthesize the test set with a checkpoint |
 | `make eval LABEL=finetuned` | Score generated audio (WER/CER/MCD) |
 | `make smoke` | Run the pytest smoke test |
@@ -134,7 +137,7 @@ Baseline (pretrained VITS, sanity sample — fine-tuning numbers to follow):
 | `data/download.py`, `data/prepare.py`, `data/prepare_training.py` | ✅ real |
 | `data/bake_dataset.py`, `data/prepare_b1_dataset.py`, `data/push_b1_dataset.py` | ✅ real — produced `Dmi1tr13/ljspeech-b1` |
 | `model/synthesize.py` (VITS, + checkpoint swap) | ✅ real |
-| `model/train.py` (fine-tuning loop) | 🚧 **MOCK** — writes a placeholder log |
+| `vits_finetune/` (VITS fine-tuning loop) | 🚧 in progress — config/dataset/collate/checkpoint wired up; `model.forward_train` + losses still stubs |
 | `evaluation/metrics.py`, `evaluation/evaluate.py` | ✅ real (WER/CER/MCD) |
 | `effects/`, `tokenization/` | demo / stub (optional) |
 
@@ -142,7 +145,7 @@ Baseline (pretrained VITS, sanity sample — fine-tuning numbers to follow):
 
 | Owner | Area | Files |
 |---|---|---|
-| **Dima** | model & fine-tuning | `src/model/` |
+| **Dima** | model & fine-tuning | `src/model/`, `src/vits_finetune/` |
 | **Emir** | infra, contracts, data | `src/core/`, `src/data/`, `Makefile` |
 | **Ilya** | evaluation | `src/evaluation/` |
 

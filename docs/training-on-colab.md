@@ -1,6 +1,6 @@
-# Fine-tuning SpeechT5 on Google Colab
+# Fine-tuning VITS on Google Colab
 
-A short runbook for running `model.train` on a free Colab GPU. Colab gives you a
+A short runbook for running `vits_finetune.train` on a free Colab GPU. Colab gives you a
 **temporary** cloud machine with a GPU: it starts empty, and everything on it is
 wiped when the session ends — so we clone the code in, install deps, train, and
 **save the checkpoint out** before disconnecting.
@@ -51,14 +51,15 @@ Each item is `{"audio": {...}, "text": "..."}` (audio already at 22050Hz) — `t
 is the original LJSpeech normalized transcript (the B1 conversion changes
 timbre/voice, not pronunciation).
 
-**5. Run training** (note the `PYTHONPATH=src` prefix — that is how the `core`,
-`data`, `model` packages are found):
+**5. Run training** (note the `PYTHONPATH=src` prefix — that is how the
+`vits_finetune` package is found):
 
 ```python
-!PYTHONPATH=src python -m model.train
+!PYTHONPATH=src python -m vits_finetune.train
 ```
 
-The checkpoint is written to `models/finetuned/` (per `core.config.FINETUNED_DIR`).
+Checkpoints are written to `models/vits_finetune/` as `epoch_<N>.pt` (and
+periodic `step_<N>.pt`), per `vits_finetune.config.TrainingConfig.checkpoint_dir`.
 
 **6. Save the checkpoint before the session dies** — mount Google Drive and copy it
 out, otherwise it is lost when Colab disconnects:
@@ -66,14 +67,15 @@ out, otherwise it is lost when Colab disconnects:
 ```python
 from google.colab import drive
 drive.mount('/content/drive')
-!cp -r models/finetuned "/content/drive/MyDrive/tts_finetuned"
+!cp -r models/vits_finetune "/content/drive/MyDrive/tts_finetuned"
 ```
 
-To use it later for inference/eval, copy it back next to the repo and point the
-checkpoint at it:
+To use it later for inference/eval, copy it back next to the repo and point a
+checkpoint file at it:
 
 ```python
-!PYTHONPATH=src python -m model.synthesize --checkpoint models/finetuned
+!PYTHONPATH=src python -m vits_finetune.synthesize \
+    --checkpoint models/vits_finetune/epoch_0.pt --text "Hello there."
 ```
 
 ## Notes
@@ -81,8 +83,7 @@ checkpoint at it:
 - **Ephemeral machine:** the VM (and `models/`, `data/`, `logs/`) is erased at the
   end of the session. Always do Step 6.
 - **Time limits:** free Colab can disconnect after a while / on idle. Keep the run
-  within a couple of hours (scale `core.config.MAX_STEPS` down if needed).
-- **Out of memory?** Lower `BATCH_SIZE` (e.g. to 4) and raise `GRAD_ACCUM` in
-  `core/config.py`.
-- The training data comes from `data.prepare_training.load_training_splits()`, which
-  downloads LJSpeech (~2.6 GB) on first use.
+  within a couple of hours (pass `--num-epochs` to scale it down for a first pass).
+- **Out of memory?** Pass `--batch-size 4` (or lower) to `vits_finetune.train`.
+- The training data is `Dmi1tr13/ljspeech-b1` (see Step 4), loaded via
+  `datasets.load_dataset` and cached on first use.

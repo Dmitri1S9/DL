@@ -6,7 +6,7 @@
 #
 # Note: a script cannot export PYTHONPATH into the notebook's shell, so prefix the
 # run command with it yourself:
-#     !PYTHONPATH=src python -m model.train
+#     !PYTHONPATH=src python -m vits_finetune.train
 set -euo pipefail
 
 echo "Installing dependencies (this can take a couple of minutes)..."
@@ -18,4 +18,4 @@ python -c "import torch; print('  cuda available:', torch.cuda.is_available())"
 
 echo
 echo "Next, run training with src on the import path:"
-echo "    PYTHONPATH=src python -m model.train"
+echo "    PYTHONPATH=src python -m vits_finetune.train"
