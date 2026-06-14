@@ -1,25 +1,33 @@
 # Project 13 — Text to Speech
 
-Fine-tune **SpeechT5** to turn English text into speech, and evaluate it.
+Fine-tune **VITS** to turn English text into speech, and evaluate it.
 *192.151 Introduction to Deep Learning, 2026S.*
 
 ## What it does
 
-Two-stage neural TTS:
+Single-stage, end-to-end neural TTS:
 
 ```
-  text  ──►  [ SpeechT5 ]  ──►  mel-spectrogram  ──►  [ HiFi-GAN ]  ──►  waveform (.wav)
-             acoustic model                            vocoder
+  text  ──►  [            VITS            ]  ──►  waveform (.wav)
+             text encoder + flow-based prior
+             + stochastic duration predictor
+             + posterior encoder (train only)
+             + HiFi-GAN-style decoder
 ```
 
-- **Acoustic model** — SpeechT5 (text → mel), **fine-tuned** on LJSpeech.
-- **Vocoder** — HiFi-GAN (mel → waveform), pretrained, used as-is.
+- **Model** — VITS (`kakao-enterprise/vits-ljs`), pretrained on LJSpeech. One model
+  maps text directly to a raw waveform — no separate vocoder and no speaker
+  embeddings to manage.
 
-We **fine-tune** rather than train from scratch: SpeechT5 is a strong pretrained
-checkpoint that adapts to LJSpeech in a few GPU-hours — realistic for the course's
-compute budget, while still being real training (we report epochs, batch size, and
-GPU-hours). Architecturally this is "text → mel + HiFi-GAN", the same class as the
-assignment's Option A (FastSpeech2 + HiFi-GAN).
+We **fine-tune** rather than train from scratch: `vits-ljs` is already a strong
+LJSpeech checkpoint, so fine-tuning onto our target voice adapts it in a few
+GPU-hours — realistic for the course's compute budget, while still being real
+training (we report epochs, batch size, and GPU-hours). This is the assignment's
+**Option C** (VITS, end-to-end text → waveform with latent-variable modeling).
+
+> We started from the SpeechT5 + HiFi-GAN plan (Option A) and migrated to VITS
+> (Option C): one model instead of two, and noticeably better audio quality
+> out of the box.
 
 ## Architecture (contract-first)
 
@@ -37,7 +45,9 @@ internals — so the team builds in parallel and the model stays swappable:
 src/
 ├── core/          config.py · contracts.py · dto.py · logger.py   (shared infra)
 ├── data/          download.py · prepare.py · prepare_training.py
-├── model/         synthesize.py · speaker.py · train.py
+│                  bake_dataset.py · prepare_b1_dataset.py · push_b1_dataset.py
+│                  (B1 voice dataset pipeline — see "Training data" below)
+├── model/         synthesize.py · train.py · speaker.py (legacy, unused by VITS)
 ├── evaluation/    metrics.py · evaluate.py
 ├── effects/       effects.py        (fun voice effects — NOT in the eval path)
 └── tokenization/  tokenizer.py      (char vs phoneme study — stub)
@@ -67,7 +77,7 @@ Dependencies are pinned to exact, verified versions in `requirements.txt`. After
 | `make all` | **Offline mock** pipeline (no downloads, runs in seconds) — proves the wiring |
 | `make data` | Download LJSpeech (~2.6 GB, once) |
 | `make prepare` | Build the test set: manifest + 16 kHz reference audio |
-| `make train` | Fine-tune SpeechT5 *(currently a MOCK — see Status)* |
+| `make train` | Fine-tune VITS *(currently a MOCK — see Status)* |
 | `make generate CKPT=models/finetuned` | Synthesize the test set with a checkpoint |
 | `make eval LABEL=finetuned` | Score generated audio (WER/CER/MCD) |
 | `make smoke` | Run the pytest smoke test |
@@ -85,6 +95,25 @@ make generate CKPT=models/finetuned   && make eval LABEL=finetuned
 Training the model itself runs on GPU (Colab/Kaggle) — see
 [`docs/training-on-colab.md`](docs/training-on-colab.md).
 
+## Training data: the B1 voice dataset
+
+Fine-tuning target: **[`Dmi1tr13/ljspeech-b1`](https://huggingface.co/datasets/Dmi1tr13/ljspeech-b1)**
+on the HF Hub — LJSpeech text resynthesized with `vits-ljs` and voice-converted to
+the *B1 Battle Droid* voice via RVC, resampled to 22050 Hz to match VITS. Public,
+no token needed:
+
+```python
+from datasets import load_dataset
+b1_ds = load_dataset("Dmi1tr13/ljspeech-b1", split="train")
+# {"audio": {"array": ..., "sampling_rate": 22050}, "text": "..."}
+```
+
+13,100 examples; `text` is the original LJSpeech normalized transcript (the B1
+conversion changes timbre, not pronunciation). Pipeline that produced it:
+`data/bake_dataset.py` (VITS synthesis) → B1 RVC Docker (voice conversion) →
+`data/prepare_b1_dataset.py` (resample + metadata) → `data/push_b1_dataset.py`
+(push to the Hub).
+
 ## Evaluation
 
 - **WER / CER** — an off-the-shelf ASR model (Whisper) transcribes our generated audio;
@@ -92,7 +121,7 @@ Training the model itself runs on GPU (Colab/Kaggle) — see
 - **MCD** — Mel Cepstral Distortion (via `pymcd`, DTW-aligned WORLD mel-cepstral) between
   our audio and the real recording; lower = closer to natural (~5–8 dB is typical).
 
-Baseline (pretrained SpeechT5, sanity sample — fine-tuning numbers to follow):
+Baseline (pretrained VITS, sanity sample — fine-tuning numbers to follow):
 
 | model | WER | CER | MCD |
 |---|---|---|---|
@@ -103,7 +132,8 @@ Baseline (pretrained SpeechT5, sanity sample — fine-tuning numbers to follow):
 | Component | State |
 |---|---|
 | `data/download.py`, `data/prepare.py`, `data/prepare_training.py` | ✅ real |
-| `model/synthesize.py` (+ checkpoint swap) | ✅ real |
+| `data/bake_dataset.py`, `data/prepare_b1_dataset.py`, `data/push_b1_dataset.py` | ✅ real — produced `Dmi1tr13/ljspeech-b1` |
+| `model/synthesize.py` (VITS, + checkpoint swap) | ✅ real |
 | `model/train.py` (fine-tuning loop) | 🚧 **MOCK** — writes a placeholder log |
 | `evaluation/metrics.py`, `evaluation/evaluate.py` | ✅ real (WER/CER/MCD) |
 | `effects/`, `tokenization/` | demo / stub (optional) |
@@ -121,4 +151,7 @@ Baseline (pretrained SpeechT5, sanity sample — fine-tuning numbers to follow):
 - **Import root** is `src` (run with `PYTHONPATH=src`).
 - **Style**: single quotes, line length 88, enforced by `ruff` (`make lint` / `make format`).
 - **Logging**: `loguru` via `core.logger` (no bare `print`).
-- **Dataset**: LJSpeech (single female voice); last 500 clips are the held-out test set.
+- **Dataset**: LJSpeech (single female voice); last 500 clips are the held-out test
+  set. Fine-tuning target is the B1-voiced variant, [`Dmi1tr13/ljspeech-b1`](https://huggingface.co/datasets/Dmi1tr13/ljspeech-b1)
+  (see "Training data" above) — the eval test set stays on original LJSpeech audio
+  so before/after comparisons are apples-to-apples on the same prompts.
