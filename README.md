@@ -158,3 +158,10 @@ Baseline (pretrained VITS, sanity sample — fine-tuning numbers to follow):
   set. Fine-tuning target is the B1-voiced variant, [`Dmi1tr13/ljspeech-b1`](https://huggingface.co/datasets/Dmi1tr13/ljspeech-b1)
   (see "Training data" above) — the eval test set stays on original LJSpeech audio
   so before/after comparisons are apples-to-apples on the same prompts.
+
+
+
+
+## DATASET IS HERE !!!!!!
+https://huggingface.co/datasets/Dmi1tr13/ljspeech-b1
+
