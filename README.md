@@ -160,8 +160,6 @@ Baseline (pretrained VITS, sanity sample — fine-tuning numbers to follow):
   so before/after comparisons are apples-to-apples on the same prompts.
 
 
+## Dataset is here
 
-
-## DATASET IS HERE !!!!!!
 https://huggingface.co/datasets/Dmi1tr13/ljspeech-b1
-
