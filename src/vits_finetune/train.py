@@ -38,6 +38,9 @@ class Trainer:
         parser.add_argument('--batch-size', type=int, default=None)
         parser.add_argument('--learning-rate', type=float, default=None)
         parser.add_argument('--num-epochs', type=int, default=None)
+        parser.add_argument('--num-workers', type=int, default=None, help='DataLoader workers.')
+        parser.add_argument('--max-train-clips', type=int, default=None,
+                            help='Cap training clips (Colab espeak-leak workaround); test set always held out.')
         parser.add_argument('--resume', type=Path, default=None, help='Checkpoint .pt to resume from.')
         parser.add_argument('--device', default=None, help='"cuda" or "cpu" (default: auto-detect).')
         return parser.parse_args()
@@ -50,6 +53,7 @@ class Trainer:
             for name in (
                 'dataset_repo_id', 'checkpoint_dir',
                 'batch_size', 'learning_rate', 'num_epochs',
+                'num_workers', 'max_train_clips',
             )
             if (value := getattr(args, name, None)) is not None
         }
@@ -156,6 +160,15 @@ class Trainer:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+
+    # phonemizer/espeak logs a noisy 'words count mismatch' warning on every call.
+    class _MutePhonemizer(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return 'words count mismatch' not in record.getMessage()
+
+    for _handler in logging.getLogger().handlers:
+        _handler.addFilter(_MutePhonemizer())
+
     args = Trainer.parse_args()
     config = Trainer.build_config(args)
     model_config = VitsModelConfig()

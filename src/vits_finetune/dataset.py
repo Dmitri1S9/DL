@@ -28,9 +28,15 @@ class VitsFinetuneDataset(Dataset):
                 used to turn ``text`` into ``input_ids``.
         """
         self.tokenizer = tokenizer
-        self.dataset = load_dataset(training_config.dataset_repo_id, 
-                                    split=training_config.dataset_split)
         self.training_config = training_config
+        self.dataset = load_dataset(training_config.dataset_repo_id,
+                                    split=training_config.dataset_split)
+        # Always hold out the last 500 clips as the eval test set (no leakage).
+        self.dataset = self.dataset.select(range(len(self.dataset) - 500))
+        # Optional cap on training clips (see TrainingConfig.max_train_clips).
+        if training_config.max_train_clips:
+            keep = min(training_config.max_train_clips, len(self.dataset))
+            self.dataset = self.dataset.select(range(keep))
 
     def __len__(self) -> int:
         """Return the number of examples in ``self.hf_dataset``."""

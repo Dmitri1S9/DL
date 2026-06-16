@@ -47,6 +47,11 @@ class TrainingConfig:
     # --- dataset (HuggingFace Hub, see data/push_b1_dataset.py) ---
     dataset_repo_id: str = 'Dmi1tr13/ljspeech-b1'
     dataset_split: str = 'train'
+    # Cap on number of training clips (None = use all). On Colab we can't raise
+    # vm.max_map_count, and phonemizer/espeak leaks a memory mapping per call, so
+    # a smaller pass avoids the 'failed to map segment' crash. The eval test set
+    # (last 500 clips) is held out regardless of this value.
+    max_train_clips: int | None = None
 
     # --- paths ---
     checkpoint_dir: Path = ROOT / 'models' / 'vits_finetune'
