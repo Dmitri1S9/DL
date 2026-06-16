@@ -19,18 +19,20 @@ class VitsFinetuneDataset(Dataset):
         self,
         training_config: TrainingConfig,
         tokenizer: PreTrainedTokenizerBase,
+        split: str | None = None,
     ) -> None:
         """
         Args:
-            training_config: supplies ``dataset_repo_id`` / ``dataset_split``
+            training_config: supplies ``dataset_repo_id`` / ``train_split``
                 and the STFT/mel parameters for ``audio.py``.
             tokenizer: VITS tokenizer (``AutoTokenizer.from_pretrained(...)``)
                 used to turn ``text`` into ``input_ids``.
+            split: HF split string; defaults to ``training_config.train_split``.
         """
         self.tokenizer = tokenizer
-        self.dataset = load_dataset(training_config.dataset_repo_id, 
-                                    split=training_config.dataset_split)
         self.training_config = training_config
+        split = split or training_config.train_split
+        self.dataset = load_dataset(training_config.dataset_repo_id, split=split)
 
     def __len__(self) -> int:
         """Return the number of examples in ``self.hf_dataset``."""

@@ -46,7 +46,8 @@ class TrainingConfig:
 
     # --- dataset (HuggingFace Hub, see data/push_b1_dataset.py) ---
     dataset_repo_id: str = 'Dmi1tr13/ljspeech-b1'
-    dataset_split: str = 'train'
+    train_split: str = 'train[:95%]'
+    test_split: str = 'train[95%:]'
 
     # --- paths ---
     checkpoint_dir: Path = ROOT / 'models' / 'vits_finetune'

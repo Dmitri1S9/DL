@@ -83,7 +83,7 @@ class Trainer:
 
             torch.manual_seed(config.seed)
             self.tokenizer = AutoTokenizer.from_pretrained(model_config.pretrained_model_name)
-            self.dataset = VitsFinetuneDataset(config, self.tokenizer)
+            self.dataset = VitsFinetuneDataset(config, self.tokenizer, split=config.train_split)
             self.dataloader = DataLoader(
                 self.dataset,
                 batch_size=config.batch_size,
