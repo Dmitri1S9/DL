@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project 13 — Teaching VITS to Speak Like a Droid</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121823; --panel2:#0e141d; --ink:#e7eef7; --muted:#90a2b8;
+    --accent:#36c2ff; --accent2:#ffb454; --good:#46d39a; --bad:#ff6b6b; --line:#222e3e;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5}
+  .deck{max-width:1100px;margin:0 auto}
+  section{min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+    padding:60px 48px;border-bottom:1px solid var(--line);scroll-snap-align:start}
+  h1{font-size:clamp(34px,5vw,62px);line-height:1.05;letter-spacing:-.02em;font-weight:800}
+  h2{font-size:clamp(25px,3.3vw,38px);letter-spacing:-.01em;margin-bottom:22px;font-weight:750}
+  h2 .num{color:var(--accent);font-family:var(--mono);font-size:.6em;margin-right:14px;font-weight:600}
+  h3{font-size:19px;margin:16px 0 6px;color:var(--accent2)}
+  p{color:var(--muted);font-size:18px;max-width:64ch;margin-bottom:12px}
+  p strong,li strong,td strong{color:var(--ink)}
+  .lead{font-size:22px;color:var(--ink)}
+  ul{margin:8px 0 8px 22px;color:var(--muted);font-size:17px}
+  li{margin-bottom:9px}
+  .tag{display:inline-block;font-family:var(--mono);font-size:13px;color:var(--accent);
+    border:1px solid var(--line);border-radius:999px;padding:5px 12px;margin-bottom:22px}
+  .cover-meta{margin-top:32px;color:var(--muted);font-family:var(--mono);font-size:15px}
+  .cover-meta b{color:var(--ink)}
+  .grid{display:grid;gap:16px;margin-top:10px}
+  .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card h3{margin-top:0}
+  .pipe{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;margin-top:14px}
+  .stage{flex:1;min-width:150px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px;position:relative}
+  .stage .s{font-family:var(--mono);font-size:12px;color:var(--accent)}
+  .stage b{display:block;margin:6px 0 4px;font-size:16px}
+  .stage span{font-size:13px;color:var(--muted)}
+  .stage.teacher{border-color:#4b3a1e;background:#16120a}
+  .stage.student{border-color:#15384a;background:#0a141b}
+  .arrow{align-self:center;color:var(--accent);font-size:22px}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:17px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+  td.mono,th.mono{font-family:var(--mono)}
+  .good{color:var(--good)} .bad{color:var(--bad)}
+  .chart{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:8px}
+  .tl{border-left:2px solid var(--line);margin-top:10px;padding-left:22px}
+  .tl .item{position:relative;margin-bottom:16px;color:var(--muted);font-size:16px}
+  .tl .item::before{content:'';position:absolute;left:-29px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--accent)}
+  .who{font-family:var(--mono);font-size:13px}
+  .who-d{color:var(--accent2)} .who-e{color:var(--accent)}
+  .pill{font-family:var(--mono);font-size:13px;padding:2px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line)}
+  .note{font-size:14px;color:var(--muted);margin-top:12px;font-style:italic}
+  .foot{font-size:13px;color:var(--muted);font-family:var(--mono);margin-top:28px}
+  .kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:5px;padding:2px 6px;color:var(--muted)}
+  .big{font-size:clamp(28px,4vw,46px);font-weight:800;letter-spacing:-.01em}
+</style>
+</head>
+<body>
+<div class="deck">
+
+<!-- 1. COVER -->
+<section>
+  <span class="tag">192.151 Introduction to Deep Learning · 2026S · Project 13</span>
+  <h1>Teaching VITS to<br>Speak Like a Droid 🤖</h1>
+  <p class="lead" style="margin-top:20px">Fine-tuning a text-to-speech model toward a Star&nbsp;Wars
+  <b>B1 Battle Droid</b> voice — and rigorously measuring whether it worked.</p>
+  <div class="cover-meta">
+    <b>Dmitrii Tsygankov</b> (model &amp; fine-tuning) · <b>Emir</b> (infra, data, evaluation) · <b>Ilya</b> (evaluation)<br>
+    <span class="kbd">↓ scroll</span> / <span class="kbd">→</span> next slide
+  </div>
+</section>
+
+<!-- 2. GOAL -->
+<section>
+  <h2><span class="num">01</span>The goal</h2>
+  <p class="lead">Build a <strong>text-to-speech</strong> system, fine-tune it, and <strong>evaluate</strong> it.
+  Graded on the <strong>ML process &amp; analysis</strong> — not on beating state of the art.</p>
+  <div class="grid g3">
+    <div class="card"><h3>Input</h3><p>English text, e.g. <em>"Roger roger."</em></p></div>
+    <div class="card"><h3>Model</h3><p>VITS — one network, text → audio waveform.</p></div>
+    <div class="card"><h3>Twist</h3><p>Make it speak in the <strong>droid voice</strong>, learned natively.</p></div>
+  </div>
+</section>
+
+<!-- 3. FINE-TUNING -->
+<section>
+  <h2><span class="num">02</span>How it works: fine-tuning</h2>
+  <p>A TTS model learns from thousands of <strong>(text, audio)</strong> pairs and speaks in whatever voice
+  those recordings use. We don't train from scratch — we <strong>fine-tune</strong> a strong pretrained
+  checkpoint (<span class="pill">kakao-enterprise/vits-ljs</span>) and adapt it. Still real training: real
+  loss curve, steps, GPU-hours. (Assignment Option C: VITS, end-to-end.)</p>
+</section>
+
+<!-- 4. DISTILLATION -->
+<section>
+  <h2><span class="num">03</span>The idea — voice distillation</h2>
+  <p>No real droid recordings exist, so we <strong>manufacture</strong> the target voice: an RVC converter
+  acts as a <strong>teacher</strong> that recolours speech into the droid timbre. We bake a droid dataset
+  once, then train VITS to reproduce that voice <strong>natively</strong> — the teacher isn't needed at run time.</p>
+  <div class="pipe">
+    <div class="stage"><span class="s">[1] source</span><b>LJSpeech</b><span>13,100 (text + natural voice)</span></div>
+    <div class="arrow">→</div>
+    <div class="stage teacher"><span class="s">[2] teacher (once)</span><b>VITS → RVC B1</b><span>recolour to droid</span></div>
+    <div class="arrow">→</div>
+    <div class="stage"><span class="s">[3] dataset</span><b>ljspeech-b1</b><span>13,100 (text + droid audio)</span></div>
+    <div class="arrow">→</div>
+    <div class="stage student"><span class="s">[4] student</span><b>fine-tune VITS</b><span>learn droid natively</span></div>
+  </div>
+  <p class="note">Why distillation, not "TTS → RVC at inference": this makes the droid the model's own voice
+  → a real train/measure/report experiment, not just glued tools.</p>
+</section>
+
+<!-- 5. DATA -->
+<section>
+  <h2><span class="num">04</span>The data</h2>
+  <div class="grid g2">
+    <div class="card"><h3>Source — LJSpeech</h3><p>~13,100 clips, single voice. <strong>Last 500 held out</strong> as the test set (never trained on).</p></div>
+    <div class="card"><h3>Target — ljspeech-b1</h3><p><span class="pill">Dmi1tr13/ljspeech-b1</span> on the HF Hub. 13,100 droid-voiced clips, 22050&nbsp;Hz. Same transcripts — only the timbre changed.</p></div>
+  </div>
+</section>
+
+<!-- 6. TRAINING -->
+<section>
+  <h2><span class="num">05</span>Training</h2>
+  <p>Fine-tuned VITS on <strong>Colab (T4)</strong> — batch 2, LR 2e-4, on a 4,000-clip subset, to
+  <strong>2,000 steps</strong> (matching the baseline setting).</p>
+  <div class="chart">
+    <svg viewBox="0 0 760 250" width="100%" height="250" font-family="monospace">
+      <line x1="58" y1="18" x2="58" y2="205" stroke="#222e3e"/>
+      <line x1="58" y1="205" x2="730" y2="205" stroke="#222e3e"/>
+      <text x="12" y="28" fill="#90a2b8" font-size="12">800</text>
+      <text x="20" y="115" fill="#90a2b8" font-size="12">400</text>
+      <text x="36" y="205" fill="#90a2b8" font-size="12">0</text>
+      <!-- total_loss: 0=801,50=534,100=365, then plateau ~330 to 2000.  y=205-(v/800*187) -->
+      <polyline fill="none" stroke="#36c2ff" stroke-width="2.5"
+        points="58,18 78,80 98,120 140,128 220,120 320,140 430,124 560,134 700,128"/>
+      <circle cx="58" cy="18" r="3.5" fill="#36c2ff"/><text x="58" y="12" fill="#e7eef7" font-size="11" text-anchor="middle">801</text>
+      <circle cx="98" cy="120" r="3.5" fill="#36c2ff"/>
+      <circle cx="700" cy="128" r="3.5" fill="#36c2ff"/>
+      <text x="380" y="100" fill="#ffb454" font-size="13">plateau: recon ≈ 0.4, KL ≈ 68 (never converges)</text>
+      <text x="58" y="224" fill="#90a2b8" font-size="11" text-anchor="middle">0</text>
+      <text x="380" y="224" fill="#90a2b8" font-size="11" text-anchor="middle">step →</text>
+      <text x="700" y="224" fill="#90a2b8" font-size="11" text-anchor="middle">2000</text>
+    </svg>
+  </div>
+  <p class="note">Loss dropped fast for ~50 steps, then flat-lined. That flat KL is the warning sign (see slide&nbsp;07).</p>
+</section>
+
+<!-- 7. RESULTS -->
+<section>
+  <h2><span class="num">06</span>Results — measured with Whisper</h2>
+  <p>We didn't judge by ear — we ran <strong>Whisper</strong> (ASR) on the output and computed
+  <strong>WER</strong>: low = intelligible, ~100% = noise. An objective, reproducible check.</p>
+  <table>
+    <thead><tr><th>Model</th><th class="mono">WER ↓</th><th>Whisper heard…</th></tr></thead>
+    <tbody>
+      <tr><td>Pretrained VITS</td><td class="mono good">10–20%</td><td>"roger roger, all units, proceed with the mission, standing by" ✅</td></tr>
+      <tr><td>Fine-tuned · 1000 steps</td><td class="mono bad">90%</td><td>"boderaer or i'll get it. with magic, hey, it goes!" ❌</td></tr>
+      <tr><td>Fine-tuned · 2000 steps</td><td class="mono bad">120%</td><td>"sorry, i owe ya everfield if thy he monday get spien i" ❌</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Honest negative result: the fine-tune produces noise at <em>both</em> 1000 and 2000 steps —
+  while the same code on the pretrained checkpoint is fully intelligible. More steps didn't help.</p>
+</section>
+
+<!-- 8. WHY -->
+<section>
+  <h2><span class="num">07</span>Why it didn't work (the lesson)</h2>
+  <p class="big" style="margin-bottom:14px">Low training loss ≠ good audio.</p>
+  <p>VITS <strong>trains</strong> on one path (reconstruct audio from the <em>posterior</em> of real audio)
+  but <strong>generates</strong> on another (prior + duration predictor + decoder). Our recon loss looked
+  okay, but <strong>KL never converged (~68)</strong> — so the generation path never learned to match the
+  decoder. At inference it feeds the decoder out-of-distribution latents → noise.</p>
+  <p>Most likely root cause: the objective is <strong>reconstruction + KL + duration only — no adversarial
+  (discriminator) loss</strong>, which real VITS relies on to train the decoder. That's why 2000 steps ≈
+  1000 steps: more of an incomplete objective doesn't fix it.</p>
+  <p class="note">Next step: add the HiFi-GAN-style discriminator/adversarial loss (or use an established VITS
+  fine-tune recipe); and verify what the repo's <span class="pill">droid_test.wav</span> was actually produced by.</p>
+</section>
+
+<!-- 9. CHALLENGES -->
+<section>
+  <h2><span class="num">08</span>Engineering challenges</h2>
+  <ul>
+    <li><strong>Reproducible env on Colab:</strong> the VITS tokenizer needs the system package <span class="pill">espeak-ng</span>; the pinned <span class="pill">torch+cu128</span> (a local GPU build) had to be swapped for Colab's torch.</li>
+    <li><strong>Test-set leakage — caught &amp; fixed:</strong> the training flow loaded the whole dataset incl. the 500 held-out test texts → now always held out.</li>
+    <li><strong>espeak memory-map leak:</strong> phonemizer re-loads the espeak C lib every call and never frees it → the run <em>hangs</em> after ~1000 steps. Worked around with a subset + workers + resume. <em>(A crash that got worse with fewer processes → a per-process leak, not a concurrency bug.)</em></li>
+    <li><strong>Objective evaluation:</strong> used Whisper WER instead of subjective listening — which is exactly what exposed the negative result.</li>
+  </ul>
+</section>
+
+<!-- 10. TEAM -->
+<section>
+  <h2><span class="num">09</span>Team &amp; evolution</h2>
+  <div class="tl">
+    <div class="item"><div class="who who-d">Dima · 30 May</div>Seed: TTS prototype with droid-voice + accent effects.</div>
+    <div class="item"><div class="who who-e">Emir · 4 Jun</div>Engineering foundation: <span class="pill">src/</span> restructure, contracts, tooling, LJSpeech + train/test split, evaluation (MCD/WER), Colab runbook, README.</div>
+    <div class="item"><div class="who who-d">Dima · 4 Jun</div>RVC B1 voice conversion, SpeechT5 → VITS migration, augmentation.</div>
+    <div class="item"><div class="who who-d">Dima · 13–14 Jun</div>Built &amp; published <span class="pill">ljspeech-b1</span>, real VITS fine-tune loop, first 2000-step run.</div>
+    <div class="item"><div class="who who-e">Emir · 16–17 Jun</div>End-to-end fine-tune on Colab, environment debugging, Whisper before/after metrics, this report &amp; deck.</div>
+  </div>
+  <p class="note">26 commits — Dima 14 (model/data), Emir 12 (infra/eval/docs).</p>
+</section>
+
+<!-- 11. CONCLUSION -->
+<section>
+  <h2><span class="num">10</span>In one line</h2>
+  <p class="lead">We built a full TTS distillation pipeline, fine-tuned VITS to 2,000 steps, and
+  <strong>objectively measured</strong> the result: the droid fine-tune isn't yet intelligible (WER 90–120%
+  vs 10–20% pretrained) — and we know <strong>why</strong> (missing adversarial loss) and <strong>what's
+  next</strong>. A complete experiment with a clear, honest answer.</p>
+  <div class="foot">Project 13 · Introduction to Deep Learning 2026S</div>
+</section>
+
+</div>
+<script>
+  const slides=[...document.querySelectorAll('section')];let i=0;
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'){i=Math.min(i+1,slides.length-1);slides[i].scrollIntoView();e.preventDefault();}
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp'){i=Math.max(i-1,0);slides[i].scrollIntoView();e.preventDefault();}
+  });
+</script>
+</body>
+</html>
