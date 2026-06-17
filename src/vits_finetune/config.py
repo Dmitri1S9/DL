@@ -30,7 +30,11 @@ class TrainingConfig:
 
     # --- training loop ---
     batch_size: int = 2
-    learning_rate: float = 2e-4
+    # Fine-tuning a pretrained VITS: 2e-5 matches the proven ylacombe recipe.
+    # 2e-4 diverges the stochastic duration predictor -> collapsed durations ->
+    # fast, unintelligible speech at inference. The (from-scratch) discriminator
+    # keeps a higher lr below, since it has to learn from nothing.
+    learning_rate: float = 2e-5
     num_epochs: int = 2
     segment_size: int = 8192  # waveform crop length (samples) fed to the decoder
     num_workers: int = 4
