@@ -39,10 +39,14 @@ class TrainingConfig:
     segment_size: int = 8192  # waveform crop length (samples) fed to the decoder
     num_workers: int = 4
     seed: int = 1234
-    # The B1 voice keeps LJSpeech timing (voice conversion changes timbre, not
-    # pronunciation), so the duration predictor should stay frozen at its correct
-    # pretrained values. Training it on this data collapses durations -> too-short,
-    # sped-up speech. Set True only if fine-tuning onto a voice with new timing.
+    # Timbre-only fine-tune: freeze the whole text/timing front-end and train only
+    # the audio side (decoder + flow + posterior). The B1 voice keeps LJSpeech text
+    # and timing (voice conversion changes timbre, not pronunciation), so the text
+    # encoder and duration predictor must stay frozen at their pretrained values.
+    # If the text encoder trains, its output drifts and the (even frozen) duration
+    # predictor reads it -> collapsed durations -> too-short, sped-up speech.
+    # Set these True only when fine-tuning onto a voice with new text/timing.
+    train_text_encoder: bool = False
     train_duration_predictor: bool = False
 
     # --- loss weights ---

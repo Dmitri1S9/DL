@@ -53,7 +53,13 @@ class VitsFinetuneModel(nn.Module):
             model_config.pretrained_model_name,
             cache_dir=str(model_config.cache_dir),
         )
-        # Keep the pretrained durations unless explicitly fine-tuning timing.
+        # Timbre-only fine-tune: freeze the text/timing front-end so durations
+        # (length) stay at their correct pretrained values. The duration predictor
+        # reads the text encoder's output at inference, so BOTH must be frozen or
+        # the text encoder drifts and durations collapse.
+        if not self.training_config.train_text_encoder:
+            for param in self.vits.text_encoder.parameters():
+                param.requires_grad = False
         if not self.training_config.train_duration_predictor:
             for param in self.vits.duration_predictor.parameters():
                 param.requires_grad = False
