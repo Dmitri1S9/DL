@@ -1,9 +1,3 @@
-"""Loss functions for VITS fine-tuning.
-
-Both losses operate on tensors returned by
-``model.VitsFinetuneModel.forward_train``.
-"""
-
 from __future__ import annotations
 
 import torch

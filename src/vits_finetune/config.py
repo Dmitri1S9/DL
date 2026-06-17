@@ -29,10 +29,10 @@ class TrainingConfig:
     mel_fmax: float | None = None
 
     # --- training loop ---
-    batch_size: int = 2
+    batch_size: int = 16
     learning_rate: float = 2e-4
     num_epochs: int = 2
-    segment_size: int = 8192  # waveform crop length (samples) fed to the decoder
+    segment_size: int = 8192 * 2 # waveform crop length (samples) fed to the decoder
     num_workers: int = 4
     seed: int = 1234
 
@@ -60,3 +60,23 @@ class TrainingConfig:
     def spectrogram_bins(self) -> int:
         """Number of frequency bins in the linear spectrogram (``n_fft // 2 + 1``)."""
         return self.n_fft // 2 + 1
+
+
+
+
+@dataclass
+class DiscriminatorConfig:
+    # --- fun mpd ---
+    mpd_periods: tuple = (2, 7, 13, 29, 37, 73, 97, 113, 137)
+    mpd_channels: tuple = (1, 32, 128, 512, 1024, 1024)
+    mpd_kernel: int = 5
+    mpd_stride: int = 3
+    batch_size: int = TrainingConfig.batch_size
+    segment_size: int = TrainingConfig.segment_size
+
+
+    msd_channels: tuple = (1, 16, 64, 256, 1024, 1024)
+    msd_kernels: tuple = (15, 41, 41, 41, 5)
+    msd_strides: tuple = (1, 4, 4, 4, 1)
+    msd_scales: int = 3
+
