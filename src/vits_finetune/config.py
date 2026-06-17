@@ -30,22 +30,11 @@ class TrainingConfig:
 
     # --- training loop ---
     batch_size: int = 2
-    # Fine-tuning a pretrained VITS: 2e-5 matches the proven ylacombe recipe.
-    # 2e-4 diverges the stochastic duration predictor -> collapsed durations ->
-    # fast, unintelligible speech at inference. The (from-scratch) discriminator
-    # keeps a higher lr below, since it has to learn from nothing.
     learning_rate: float = 2e-5
     num_epochs: int = 2
-    segment_size: int = 8192  # waveform crop length (samples) fed to the decoder
+    segment_size: int = 8192
     num_workers: int = 4
     seed: int = 1234
-    # Timbre-only fine-tune: freeze the whole text/timing front-end and train only
-    # the audio side (decoder + flow + posterior). The B1 voice keeps LJSpeech text
-    # and timing (voice conversion changes timbre, not pronunciation), so the text
-    # encoder and duration predictor must stay frozen at their pretrained values.
-    # If the text encoder trains, its output drifts and the (even frozen) duration
-    # predictor reads it -> collapsed durations -> too-short, sped-up speech.
-    # Set these True only when fine-tuning onto a voice with new text/timing.
     train_text_encoder: bool = False
     train_duration_predictor: bool = False
 
@@ -63,13 +52,9 @@ class TrainingConfig:
     log_every: int = 50
     checkpoint_every: int = 1000
 
-    # --- dataset (HuggingFace Hub, see data/push_b1_dataset.py) ---
+    # --- dataset (HuggingFace Hub) ---
     dataset_repo_id: str = 'Dmi1tr13/ljspeech-b1'
     dataset_split: str = 'train'
-    # Cap on number of training clips (None = use all). On Colab we can't raise
-    # vm.max_map_count, and phonemizer/espeak leaks a memory mapping per call, so
-    # a smaller pass avoids the 'failed to map segment' crash. The eval test set
-    # (last 500 clips) is held out regardless of this value.
     max_train_clips: int | None = None
 
     # --- paths ---

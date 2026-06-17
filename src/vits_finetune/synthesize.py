@@ -28,7 +28,6 @@ def load_model(
     """
     model = VitsFinetuneModel(model_config)
     if checkpoint_path is not None:
-        # map_location=device so a GPU-saved checkpoint loads on a CPU-only machine.
         load_checkpoint(checkpoint_path, model, map_location=device)
     model = model.to(device)
     model.eval()
@@ -48,7 +47,7 @@ def synthesize(
     inputs = tokenizer(text, return_tensors="pt").to(device)
     with torch.no_grad():
         output = model.vits(input_ids=inputs.input_ids)
-    waveform = output.waveform.squeeze(0).cpu()    # (1, T) -> (T,)
+    waveform = output.waveform.squeeze(0).cpu()
     return waveform
 
 

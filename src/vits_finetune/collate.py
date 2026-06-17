@@ -60,12 +60,6 @@ def collate_fn(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
     padded_linear_spec, spec_lengths = padding_linear_specs(batch)
     padded_mel_spec, _mel_lengths = padding_mel_specs(batch)
 
-    # to check that it works
-    # hop = 256
-    # expected_spec = (wav_lengths - config.n_fft) // hop + 1
-    # assert torch.all(spec_lengths == expected_spec), \
-    #     f"frame mismatch: spec={spec_lengths} expected={expected_spec}"
-
     return {
         "input_ids": padded_ids,
         "linear_spec": padded_linear_spec,
@@ -75,22 +69,3 @@ def collate_fn(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
         "spec_lengths": spec_lengths,
         "waveform_lengths": wav_lengths,
     }
-
-
-# if __name__ == "__main__":
-#     from transformers import AutoTokenizer
-
-#     from vits_finetune.config import TrainingConfig
-#     from vits_finetune.dataset import VitsFinetuneDataset
-#     from vits_finetune.model_config import VitsModelConfig
-
-#     config = TrainingConfig()
-#     model_config = VitsModelConfig()
-#     tokenizer = AutoTokenizer.from_pretrained(
-#         model_config.pretrained_model_name, cache_dir=str(model_config.cache_dir)
-#     )
-#     ds = VitsFinetuneDataset(config, tokenizer)
-
-#     b = collate_fn([ds[0], ds[1], ds[2]])
-#     for k, v in b.items():
-#         print(k, tuple(v.shape), v.dtype)

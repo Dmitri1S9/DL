@@ -136,8 +136,6 @@ class Trainer:
             + self.config.gen_loss_weight * adv
             + self.config.fm_loss_weight * fm
         )
-        # Only train durations when explicitly enabled; otherwise the predictor is
-        # frozen and `dur` is logged for reference only.
         if self.config.train_duration_predictor:
             loss_g = loss_g + dur
         loss_g.backward()
@@ -206,7 +204,6 @@ class Trainer:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
 
-    # phonemizer/espeak logs a noisy 'words count mismatch' warning on every call.
     class _MutePhonemizer(logging.Filter):
         def filter(self, record: logging.LogRecord) -> bool:
             return 'words count mismatch' not in record.getMessage()
