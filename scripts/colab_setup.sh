@@ -1,21 +1,15 @@
 #!/usr/bin/env bash
-# One-shot environment setup for fine-tuning on Colab / Kaggle.
-#
-# Run from the repo root, AFTER cloning and cd-ing into it:
-#     !bash scripts/colab_setup.sh
-#
-# Note: a script cannot export PYTHONPATH into the notebook's shell, so prefix the
-# run command with it yourself:
-#     !PYTHONPATH=src python -m vits_finetune.train
 set -euo pipefail
 
-echo "Installing dependencies (this can take a couple of minutes)..."
-pip install -q -r requirements.txt
+apt-get install -y -q espeak-ng libespeak-ng-dev
 
-echo
-echo "Setup complete. GPU visible to PyTorch:"
-python -c "import torch; print('  cuda available:', torch.cuda.is_available())"
+pip install -q \
+    'transformers==5.9.0' \
+    'datasets==3.6.0' \
+    'soundfile==0.13.1' \
+    'librosa==0.11.0' \
+    'scipy==1.17.1' \
+    'accelerate==1.13.0' \
+    'phonemizer==3.3.0'
 
-echo
-echo "Next, run training with src on the import path:"
-echo "    PYTHONPATH=src python -m vits_finetune.train"
+python -c "import torch; print('cuda:', torch.cuda.is_available(), torch.version.cuda)"
