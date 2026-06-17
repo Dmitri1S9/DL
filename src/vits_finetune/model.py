@@ -53,79 +53,74 @@ class VitsFinetuneModel(nn.Module):
             model_config.pretrained_model_name,
             cache_dir=str(model_config.cache_dir),
         )
+        if not self.training_config.train_text_encoder:
+            for param in self.vits.text_encoder.parameters():
+                param.requires_grad = False
+        if not self.training_config.train_duration_predictor:
+            for param in self.vits.duration_predictor.parameters():
+                param.requires_grad = False
 
-    text_mask = lambda self, batch: _sequence_mask(batch['input_lengths'],
-                                            batch['input_ids'].shape[1])
-    text_encoder = lambda self, text_mask, batch: self.vits.text_encoder(
+    def text_mask(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
+        return _sequence_mask(batch['input_lengths'], batch['input_ids'].shape[1])
+
+    def text_encoder(self, text_mask: torch.Tensor, batch: dict[str, torch.Tensor]):
+        return self.vits.text_encoder(
             batch['input_ids'],
             text_mask.unsqueeze(-1).float(),
             attention_mask=text_mask.float(),
         )
-    
-    spec_mask = lambda self, batch: _sequence_mask(
-            batch['spec_lengths'], batch['linear_spec'].shape[2]).unsqueeze(1).float()
 
-    audio_encoder = lambda self, batch, spec_mask: self.vits.posterior_encoder(
-        batch['linear_spec'],
-        spec_mask,
-    )
+    def spec_mask(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
+        return _sequence_mask(
+            batch['spec_lengths'], batch['linear_spec'].shape[2]
+        ).unsqueeze(1).float()
 
-    flow = property(lambda self: self.vits.flow)
-    
-    duration_predictor = property(lambda self: self.vits.duration_predictor)
+    def audio_encoder(self, batch: dict[str, torch.Tensor], spec_mask: torch.Tensor):
+        return self.vits.posterior_encoder(batch['linear_spec'], spec_mask)
 
-    decoder = property(lambda self: self.vits.decoder)
+    @property
+    def flow(self):
+        return self.vits.flow
+
+    @property
+    def duration_predictor(self):
+        return self.vits.duration_predictor
+
+    @property
+    def decoder(self):
+        return self.vits.decoder
 
     def forward_train(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        """Run the VITS *training* forward pass on a padded batch from ``collate.collate_fn``.
+        """Run the VITS training forward pass on a padded batch.
 
-        Steps to implement:
-          1. Text encoding: input_ids -> text hidden states + prior_mean / prior_log_stddev.
-          2. Posterior encoding: linear_spec -> z, posterior_mean, posterior_log_stddev.
-          3. Flow: z -> z_p (prior latent space).
-          4. MAS: alignment between z_p and prior (maximum_path / neg_cross_entropy).
-          5. Expand per-token prior to per-frame via alignment; duration loss.
-          6. Random segment crop of z (and matching target mel).
-          7. Decode z segment -> waveform -> predicted mel.
-          8. Return tensors for losses.py / train.py.
-
-        Returns:
-            Dict with (at least):
-              - "predicted_mel", "target_mel"            -> recon_loss
-              - "posterior_mean", "posterior_log_stddev",
-                "prior_mean", "prior_log_stddev", "z_mask" -> kl_loss
-              - "duration_loss"                          -> duration term
+        Returns the tensors consumed by ``losses.py`` / ``train.py``:
+        predicted/target mel and waveform segments, posterior/prior means and
+        log-stddevs, ``z_mask``, ``z_p`` and ``duration_loss``.
         """
-        text_mask = self.text_mask(batch)  # (B, T_text)
+        text_mask = self.text_mask(batch)
         text_out = self.text_encoder(text_mask, batch)
         prior_mean = text_out.prior_means.transpose(1, 2)
         prior_log_stddev = text_out.prior_log_variances.transpose(1, 2)
-        last_hidden_state = text_out.last_hidden_state 
+        last_hidden_state = text_out.last_hidden_state
 
         spec_mask = self.spec_mask(batch)
         z, posterior_mean, posterior_log_stddev = self.audio_encoder(batch, spec_mask)
 
         z_p = self.flow(z, spec_mask, reverse=False)
 
-        # (B, T_text, T_frames)
-        neg_cent = neg_cross_entropy(z_p, prior_mean, prior_log_stddev)  
-
-        # (B, T_text, T_frames)
-        mas_mask = (
-            text_mask.unsqueeze(2) & spec_mask.bool()
-        ).float() 
-        # MAS algorithm result
+        neg_cent = neg_cross_entropy(z_p, prior_mean, prior_log_stddev)
+        mas_mask = (text_mask.unsqueeze(2) & spec_mask.bool()).float()
         attn = maximum_path(neg_cent, mas_mask)
 
         prior_mean = torch.matmul(prior_mean, attn)
         prior_log_stddev = torch.matmul(prior_log_stddev, attn)
-        durations = attn.sum(dim=2).unsqueeze(1)  # (B, T_text)
+        durations = attn.sum(dim=2).unsqueeze(1)
 
-        duration_loss =self.duration_predictor(
-            last_hidden_state.transpose(1,2),
+        duration_loss = self.duration_predictor(
+            last_hidden_state.transpose(1, 2),
             text_mask.unsqueeze(1).float(),
             durations=durations,
-            reverse=False
+            reverse=False,
         ).mean()
 
         segment_frames = self.training_config.segment_size // self.training_config.hop_length
@@ -134,17 +129,25 @@ class VitsFinetuneModel(nn.Module):
         z_segment, starts = _rand_slice_segments(z, batch['spec_lengths'], segment_frames)
         target_mel = _slice_segments(batch['mel_spec'], starts, segment_frames)
 
-        # (B, 1, segment_frames*hop)
-        predicted_waveform = self.decoder(z_segment)           
+        predicted_waveform = self.decoder(z_segment)
         predicted_mel = wav_to_mel_spectrogram(
             predicted_waveform.squeeze(1), self.training_config
         )
 
         num_frames = min(predicted_mel.shape[-1], target_mel.shape[-1])
 
+        wav_segment_size = segment_frames * self.training_config.hop_length
+        wav_starts = starts * self.training_config.hop_length
+        target_waveform = _slice_segments(
+            batch['waveform'], wav_starts, wav_segment_size
+        )
+        num_samples = min(predicted_waveform.shape[-1], target_waveform.shape[-1])
+
         return {
             'predicted_mel': predicted_mel[..., :num_frames],
             'target_mel': target_mel[..., :num_frames],
+            'predicted_waveform': predicted_waveform[..., :num_samples],
+            'target_waveform': target_waveform[..., :num_samples],
             'posterior_mean': posterior_mean,
             'posterior_log_stddev': posterior_log_stddev,
             'prior_mean': prior_mean,

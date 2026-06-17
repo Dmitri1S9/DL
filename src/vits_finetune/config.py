@@ -30,24 +30,33 @@ class TrainingConfig:
 
     # --- training loop ---
     batch_size: int = 2
-    learning_rate: float = 2e-4
+    learning_rate: float = 2e-5
     num_epochs: int = 2
-    segment_size: int = 8192  # waveform crop length (samples) fed to the decoder
+    segment_size: int = 8192
     num_workers: int = 4
     seed: int = 1234
+    train_text_encoder: bool = False
+    train_duration_predictor: bool = False
 
     # --- loss weights ---
     mel_loss_weight: float = 45.0
     kl_loss_weight: float = 1.0
+    fm_loss_weight: float = 2.0
+    gen_loss_weight: float = 1.0
+    disc_loss_weight: float = 1.0
+
+    # --- adversarial optimizer ---
+    disc_learning_rate: float = 2e-4
 
     # --- logging / checkpointing cadence (in steps) ---
     log_every: int = 50
     checkpoint_every: int = 1000
 
-    # --- dataset (HuggingFace Hub, see data/push_b1_dataset.py) ---
+    # --- dataset (HuggingFace Hub) ---
     dataset_repo_id: str = 'Dmi1tr13/ljspeech-b1'
     train_split: str = 'train[:95%]'
     test_split: str = 'train[95%:]'
+    max_train_clips: int | None = None
 
     # --- paths ---
     checkpoint_dir: Path = ROOT / 'models' / 'vits_finetune'
