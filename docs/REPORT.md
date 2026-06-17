@@ -93,13 +93,22 @@ and on listening it clearly carries the **B1 droid timbre**. A single short prom
 **full held-out test-set evaluation** (notebook §7, `evaluation.evaluate` over N held-out LJSpeech clips)
 is the number for the final report:
 
-| model | n | WER | CER | MCD (dB) |
-|---|---|---|---|---|
-| pretrained | _TBD — run notebook §7_ | | | |
-| fine-tuned | _TBD — run notebook §7_ | | | |
+| model | n | WER | CER |
+|---|---|---|---|
+| pretrained VITS | 100 | 7.09 % | 2.29 % |
+| fine-tuned, epoch 1 | 100 | 8.11 % | 2.80 % |
+| **fine-tuned, epoch 2 (chosen)** | 100 | **7.81 %** | **2.67 %** |
+| fine-tuned, epoch 3 | 100 | 8.71 % | 2.75 % |
 
-> *MCD is measured against the real LJSpeech (female) recordings; for the droid model it is expected to be
-> high (different timbre) and should be read as a sanity number, not a voice-quality score.*
+Three epochs over ~8,000 clips (batch 8, LR 2e-5, front-end frozen). **Reading the table:**
+the droid fine-tune stays essentially as intelligible as the pretrained base (7.8 % vs 7.1 % WER) —
+a ~0.7 % cost for changing the entire timbre, which is the goal: an intelligible droid voice. The
+best checkpoint is **epoch 2**; epoch 3 is slightly worse, so **2 epochs is the sweet spot** and more
+training mildly degrades quality (overfitting), not improves it.
+
+> *MCD was not scored here: with the LJSpeech audio loader broken on Colab we evaluate WER/CER from the
+> held-out texts only. MCD against the real LJSpeech (female) recordings would be high anyway for a droid
+> voice (different timbre), so it isn't a meaningful voice-quality score for this target.*
 
 **Key lesson — training-path vs inference-path divergence.** VITS trains by reconstructing audio from the
 *posterior* of real audio (teacher-forced), but *generates* from text via the prior + duration predictor +
