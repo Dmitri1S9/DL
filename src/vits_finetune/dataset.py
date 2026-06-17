@@ -1,4 +1,5 @@
-"""Dataset for VITS fine-tuning."""
+"""Dataset for VITS fine-tuning.    
+"""
 
 from __future__ import annotations
 
@@ -32,9 +33,6 @@ class VitsFinetuneDataset(Dataset):
         self.training_config = training_config
         split = split or training_config.train_split
         self.dataset = load_dataset(training_config.dataset_repo_id, split=split)
-        if training_config.max_train_clips:
-            keep = min(training_config.max_train_clips, len(self.dataset))
-            self.dataset = self.dataset.select(range(keep))
 
     def __len__(self) -> int:
         """Return the number of examples in ``self.hf_dataset``."""
@@ -53,16 +51,16 @@ class VitsFinetuneDataset(Dataset):
         """
         if index >= len(self.dataset):
             raise IndexError(f"Index {index} out of range for dataset of size {len(self.dataset)}")
-
+        
         example = self.dataset[index]
         input_ids = self.tokenizer(example["text"], return_tensors="pt").input_ids.squeeze(0)
-        audio_array = torch.from_numpy(example["audio"]["array"]).float()
+        audio_array = torch.from_numpy(example["audio"]["array"]).float() 
         linear_spectrogram = wav_to_linear_spectrogram(audio_array, self.training_config)
         mel_spectrogram = wav_to_mel_spectrogram(audio_array, self.training_config)
 
         return {
             "input_ids": input_ids,
             "waveform": audio_array,
-            "linear_spec": linear_spectrogram,
+            "linear_spec": linear_spectrogram,        
             "mel_spec": mel_spectrogram,
-        }
+        }  

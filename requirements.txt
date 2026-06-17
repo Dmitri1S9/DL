@@ -20,7 +20,6 @@ accelerate==1.13.0
 loguru==0.7.3
 pydantic==2.13.4
 phonemizer==3.3.0          # IPA phonemization for VITS tokenizer (needs espeak-ng system lib)
-espeakng-loader==0.2.4     # ships a matching-arch espeak-ng + data (portable; no brew/apt needed)
 pedalboard==0.9.23         # Spotify DSP effects library (used in effects.py)
 g2p_en==2.1.0              # grapheme-to-phoneme (ARPAbet) for phoneme-level accent substitution
 openai-whisper==20250625   # ASR for the WER/CER intelligibility metric

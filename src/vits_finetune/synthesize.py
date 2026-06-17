@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 
 import torch
+import torchaudio
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from vits_finetune.checkpoint import load_checkpoint
@@ -26,9 +27,9 @@ def load_model(
     Returns:
         The model, ready for ``synthesize``.
     """
-    model = VitsFinetuneModel(model_config)
+    model = VitsFinetuneModel(model_config)      
     if checkpoint_path is not None:
-        load_checkpoint(checkpoint_path, model, map_location=device)
+        load_checkpoint(checkpoint_path, model)  
     model = model.to(device)
     model.eval()
     return model
@@ -47,44 +48,8 @@ def synthesize(
     inputs = tokenizer(text, return_tensors="pt").to(device)
     with torch.no_grad():
         output = model.vits(input_ids=inputs.input_ids)
-    waveform = output.waveform.squeeze(0).cpu()
+    waveform = output.waveform.squeeze(0).cpu()    # (1, T) -> (T,)
     return waveform
-
-
-def generate_for_manifest(
-    checkpoint_path: str | Path | None,
-    manifest_path: str | Path,
-    out_dir: str | Path,
-    device: torch.device | None = None,
-) -> Path:
-    """Synthesize every item in a test manifest into ``out_dir/<id>.wav``.
-
-    Mirrors ``model.synthesize.generate_for_manifest`` but loads our own ``.pt``
-    fine-tune checkpoint (a ``VitsFinetuneModel`` state dict), so the evaluation
-    contract (``<id>.wav`` per manifest item) works for the fine-tuned model too.
-    """
-    import soundfile as sf
-
-    from core.contracts import read_manifest
-
-    device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model_config = VitsModelConfig()
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_config.pretrained_model_name, cache_dir=str(model_config.cache_dir)
-    )
-    model = load_model(checkpoint_path, model_config, device)
-
-    items = read_manifest(manifest_path)
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f'Synthesizing {len(items)} clips -> {out_dir}')
-    for item in items:
-        waveform = synthesize(item.text, model, tokenizer, device)
-        sf.write(
-            str(out_dir / f'{item.id}.wav'), waveform.numpy(), model_config.sampling_rate
-        )
-    logger.info(f'Wrote {len(items)} wavs to {out_dir}')
-    return out_dir
 
 
 def main() -> None:
