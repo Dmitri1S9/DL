@@ -30,77 +30,109 @@ grades (process & analysis, not SOTA quality).
 - **Target — [`Dmi1tr13/ljspeech-b1`](https://huggingface.co/datasets/Dmi1tr13/ljspeech-b1):** LJSpeech text
   resynthesized with VITS, voice-converted to B1 via RVC, 22050 Hz. Same transcripts, droid timbre.
 
-## 3. Training (what we actually ran)
+## 3. The model: a full VITS GAN fine-tune
 
-Fine-tuned VITS on **Google Colab (T4)** from the clean `finetune` branch — clone → install → train →
-generate → evaluate, no patch cells. Settings mirror the known-good baseline: **batch 2, LR 2e-4**, on a
-**4,000-clip subset** (test set still held out), `num_workers=4`.
+VITS is a **GAN** — its decoder only learns to produce realistic waveforms when trained *against a
+discriminator*. Our first own training loop had only the reconstruction objective (mel L1 + KL +
+duration), **no discriminator**, and produced pure noise (Whisper WER 90–120 %). The fix was to finish
+our own package into a real adversarial trainer rather than vendor a third-party recipe:
 
-- Loss fell fast in the first ~50 steps then **plateaued from ~step 100**: `recon_loss` ≈ 0.4,
-  `kl_loss` ≈ 68 (never converged), `duration_loss` oscillating ~150–400. total_loss ~250–450.
-- Reached **2,000 steps** (the baseline's setting), saving `step_1000.pt` and `step_2000.pt`.
-- Infra note: the run **hung after each checkpoint save** (espeak memory-map leak accumulating across the
-  DataLoader workers); we reached 2,000 steps by resuming in a fresh process. See §5.
+- **`discriminator.py` (written from scratch):** the standard HiFi-GAN discriminator — a multi-period
+  discriminator (periods 2,3,5,7,11) + a multi-scale discriminator (3 scales). `transformers.VitsModel`
+  ships the generator but not the discriminator, so we added it.
+- **`losses.py`:** added `discriminator_loss`, `generator_adv_loss`, `feature_matching_loss` (LS-GAN
+  + L1 feature matching) on top of the existing mel + KL terms.
+- **`train.py`:** rewrote the loop as a proper GAN — two optimizers, a discriminator step then a
+  generator step each batch.
 
-## 4. Results & honest analysis
+## 4. Debugging journey — where we were wrong, and what fixed it
 
-Evaluated **objectively with Whisper** (ASR → WER on the held-out prompt; low = intelligible,
-~100% = garbage). This removes the need for subjective listening.
+The first GAN run trained (losses moved, mel reconstruction fell) but **inference was broken**: the droid
+spoke far too fast and unintelligibly. We debugged it systematically — each step taught us something:
 
-| model | WER | Whisper transcription |
-|---|---|---|
-| pretrained VITS | **10–20 %** | "roger roger, all units, proceed with the mission, standing by" ✅ intelligible |
-| fine-tuned, 1000 steps | **90 %** | "boderaer or i'll get it. with magic, hey, it goes!" ❌ |
-| fine-tuned, 2000 steps | **120 %** | "sorry, i owe ya everfield if thy he monday get spien i" ❌ |
+| # | Symptom | Hypothesis / change | Result |
+|---|---|---|---|
+| 0 | 1 s output (vs 5 s), WER **110 %** | first GAN run, default LR **2e-4** | broken |
+| 1 | duration loss oscillating, never converging | LR **2e-4 → 2e-5** (the proven recipe value); 2e-4 caused catastrophic forgetting | partial: 2 s, WER **90 %** |
+| 2 | still 2 s, WER ~100 % | **froze the duration predictor** (B1 keeps LJSpeech timing, so durations shouldn't change) | **no change** — a key clue |
+| 3 | — | read the inference code: length = `duration_predictor(text_encoder(text))`. The frozen predictor still reads the **text encoder**, which was *still training* (via KL) and drifting → out-of-distribution durations. **Froze the text encoder too.** | **fixed** ✅ |
 
-**Conclusion (negative, but rigorous):** the droid fine-tune does **not** produce intelligible speech with
-this setup — at *either* 1000 or 2000 steps. The fine-tuned model's output is noise (WER ≥ 90 %), while the
-same code on the pretrained checkpoint is fully intelligible (so the inference/eval code is correct — it's
-the fine-tuned weights that break generation).
+**Mistakes we made and corrected:**
+1. **Wrong learning rate.** We inherited LR `2e-4` (fine for training from scratch) and used it for
+   *fine-tuning* a pretrained model — 10× too high. It caused catastrophic forgetting; the delicate
+   stochastic duration predictor collapsed first.
+2. **Misreading a noisy signal.** We expected the duration loss to fall smoothly. It doesn't: the
+   *stochastic* duration predictor samples random noise inside its loss every step, so the loss is
+   inherently noisy and is **not** a convergence indicator. The real indicator is inference output.
+3. **Fixing the symptom, not the source.** Freezing the duration predictor seemed obvious, but it changed
+   nothing — because its *input* (the text encoder) was the thing drifting. Only tracing the actual
+   inference code revealed the dependency.
 
-**Why (analysis):** the training loss plateaued almost immediately (recon ~0.4, KL never dropping from ~68).
-VITS trains on one path (reconstruct audio from the *posterior* of real audio) but *generates* on another
-(prior + stochastic duration predictor + flow + decoder). Low recon loss with a flat KL means the prior /
-generation path never learned to match the decoder → at inference it feeds the decoder out-of-distribution
-latents → noise. The most likely root cause: the training objective here is **reconstruction + KL +
-duration only, with no adversarial (discriminator) loss** — and real VITS relies on adversarial training to
-make the decoder produce good waveforms. Without it, more steps don't help (confirmed: 2000 ≈ 1000).
+**Root cause (one sentence):** for a *timbre-only* fine-tune, training the text/timing front-end lets it
+drift away from what the (frozen) duration predictor expects, collapsing durations — so the whole
+text/timing front-end must be frozen, and only the audio side (decoder + flow + posterior) trained.
 
-**Next steps:** add the HiFi-GAN-style discriminator + adversarial loss to `vits_finetune` (or adopt an
-established VITS fine-tuning recipe); and verify what the repo's `droid_test.wav` was actually produced by
-(possibly the RVC post-process path, not this fine-tuned model).
+This is now encoded in `config.py` as `train_text_encoder=False` / `train_duration_predictor=False`
+(both frozen by default), with comments explaining why.
 
-## 5. Engineering challenges (where the real work was)
+## 5. Results & analysis
 
-1. **Reproducible env on Colab:** the VITS tokenizer needs the *system* package `espeak-ng`; the pinned
-   `torch==2.11.0+cu128` (a local GPU build) isn't on Colab → use Colab's torch instead.
-2. **Test-set leakage (caught & fixed):** the B1 training flow loaded the *entire* dataset, including the
-   500 held-out test texts → fixed by always holding out the last 500 in `vits_finetune/dataset.py`.
-3. **espeak memory-map leak:** phonemizer `dlopen`s the espeak C library on every call and never releases
-   it → hits `vm.max_map_count` (~65k) and the run **hangs/crashes** after ~1000 steps. Colab forbids
-   raising the limit, so we trained on a subset + split the load across workers, and reached 2000 steps by
-   resuming in a fresh process. *Diagnostic lesson: a crash that got **worse** with fewer processes pointed
-   to a per-process resource leak, not a concurrency bug.*
-4. **Low loss ≠ good audio (the key lesson):** a falling/low training loss does **not** guarantee good
-   generation when training and inference use different paths. The objective Whisper WER exposed this — the
-   model that "trained fine" generates noise.
+Evaluated **objectively with Whisper** (ASR → WER/CER on the prompt; low = intelligible, ~100 % = garbage),
+the team's own `evaluation` module. The before/after on a sample prompt
+("Roger roger. All units, proceed with the mission. Standing by."):
 
-## 6. Contributions & evolution (git, 26 commits)
+| model | length | WER | CER |
+|---|---|---|---|
+| pretrained VITS | ~5 s | 40 % | 6.6 % |
+| **fine-tuned droid (working)** | **~5 s** | **30 %** | **4.9 %** |
+| fine-tuned, LR 2e-4 (broken) | 1 s | 110 % | 75 % |
+| fine-tuned, LR 2e-5, front-end trained (broken) | 2 s | 90 % | 47 % |
 
-| Member | Commits | Area |
-|---|---|---|
-| Dima (Tsygankov Dmitrii) | 14 | model, RVC conversion, VITS migration, B1 dataset, fine-tuning loop |
-| Emir (Wiped-Out) | 12 | infra, restructure/tooling, data + train/test split, evaluation (MCD/WER), Colab runbook, README |
-| Ilya | 0 | (no commits in history — verify before the contributions slide) |
+The working fine-tune is **intelligible and slightly better than the pretrained base** on this prompt,
+and on listening it clearly carries the **B1 droid timbre**. A single short prompt is noisy, so the
+**full held-out test-set evaluation** (notebook §7, `evaluation.evaluate` over N held-out LJSpeech clips)
+is the number for the final report:
 
-**Timeline:** 30 May — Dima seeds the TTS + droid-effects prototype → 4 Jun — Emir builds the engineering
-foundation (structure, contracts, eval, Colab, README) → 4 Jun — Dima's RVC + SpeechT5→VITS migration →
-13–14 Jun — Dima builds the B1 dataset + the real fine-tune loop → 16–17 Jun — Emir runs the fine-tune
-end-to-end on Colab, debugs the environment, measures WER, and produces this report + presentation.
+| model | n | WER | CER | MCD (dB) |
+|---|---|---|---|---|
+| pretrained | _TBD — run notebook §7_ | | | |
+| fine-tuned | _TBD — run notebook §7_ | | | |
+
+> *MCD is measured against the real LJSpeech (female) recordings; for the droid model it is expected to be
+> high (different timbre) and should be read as a sanity number, not a voice-quality score.*
+
+**Key lesson — training-path vs inference-path divergence.** VITS trains by reconstructing audio from the
+*posterior* of real audio (teacher-forced), but *generates* from text via the prior + duration predictor +
+flow + decoder. A falling reconstruction loss therefore says nothing about generation quality — our broken
+runs had a *decreasing* mel loss while generating garbage. The objective WER on the inference path is what
+exposed every problem.
+
+## 6. Engineering challenges (where the real work was)
+
+1. **Implementing the discriminator from scratch** — the missing half of the VITS objective; without it
+   the decoder never learns realistic waveforms.
+2. **Diagnosing the duration collapse** — traced through the `transformers` VITS source to find that
+   inference length flows `text_encoder → duration_predictor`, which dictated *which* modules to freeze.
+3. **Reproducible env on Colab:** the VITS tokenizer needs the *system* package `espeak-ng`; the pinned
+   local CUDA torch build isn't on Colab → use Colab's torch.
+4. **Test-set leakage (caught & fixed earlier):** the B1 flow once loaded the whole dataset including the
+   held-out test texts → always hold out the last 500.
+5. **espeak memory-map leak:** phonemizer `dlopen`s the espeak C library every call → can hit
+   `vm.max_map_count` and hang; mitigated with a clip cap + worker split.
 
 ## 7. How to reproduce
 
-1. `colab_train.ipynb` (branch `finetune`): clone → install → train → listen → Whisper WER.
-2. Training command: `vits_finetune.train --batch-size 2 --num-epochs 1 --max-train-clips 4000 --num-workers 4`
-   (resume from a `step_*.pt` to continue past the espeak hang).
-3. Fixes live in `src/vits_finetune/{config,dataset,train}.py` (held-out test set, `max_train_clips`, quiet logs).
+1. **`colab_train.ipynb`** (branch `finetune`): clone → install → train → listen → Whisper WER →
+   full test-set evaluation (§7).
+2. Training: `vits_finetune.train --batch-size 2 --num-epochs N` (LR `2e-5` and front-end freeze are the
+   defaults now; raise `--batch-size` on a bigger GPU).
+3. The model fixes live in `src/vits_finetune/{config,model,train,discriminator,losses}.py`; design and
+   debugging notes in `docs/superpowers/`.
+
+## 8. Contributions
+
+| Member | Area |
+|---|---|
+| Dima (Tsygankov Dmitrii) | model, RVC conversion, VITS migration, B1 dataset, initial fine-tune loop |
+| Emir (Wiped-Out) | infra, contracts, data + train/test split, evaluation (WER/CER/MCD), GAN trainer + discriminator, Colab runbook, debugging, this report |
+| Ilya | evaluation (verify contributions before the slide) |
