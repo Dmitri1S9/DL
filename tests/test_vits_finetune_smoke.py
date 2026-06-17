@@ -76,3 +76,13 @@ def test_gan_step_updates_both_sides():
 
     assert not torch.equal(d_before, next(disc.parameters()))
     assert not torch.equal(g_before, next(generator.parameters()))
+
+
+def test_slice_segments_waveform_crop():
+    from vits_finetune.model import _slice_segments
+
+    wav = torch.arange(20, dtype=torch.float32).view(1, 1, 20)
+    starts = torch.tensor([5])
+    out = _slice_segments(wav, starts, 4)
+    assert out.shape == (1, 1, 4)
+    assert torch.equal(out[0, 0], torch.tensor([5.0, 6.0, 7.0, 8.0]))

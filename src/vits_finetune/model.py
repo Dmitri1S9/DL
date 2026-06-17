@@ -142,9 +142,18 @@ class VitsFinetuneModel(nn.Module):
 
         num_frames = min(predicted_mel.shape[-1], target_mel.shape[-1])
 
+        wav_segment_size = segment_frames * self.training_config.hop_length
+        wav_starts = starts * self.training_config.hop_length
+        target_waveform = _slice_segments(
+            batch['waveform'], wav_starts, wav_segment_size
+        )
+        num_samples = min(predicted_waveform.shape[-1], target_waveform.shape[-1])
+
         return {
             'predicted_mel': predicted_mel[..., :num_frames],
             'target_mel': target_mel[..., :num_frames],
+            'predicted_waveform': predicted_waveform[..., :num_samples],
+            'target_waveform': target_waveform[..., :num_samples],
             'posterior_mean': posterior_mean,
             'posterior_log_stddev': posterior_log_stddev,
             'prior_mean': prior_mean,
