@@ -1,4 +1,4 @@
-[tool.ruff]
+toml[tool.ruff]
 target-version = "py312"
 line-length = 88
 exclude = [
@@ -9,22 +9,16 @@ exclude = [
 ]
 
 [tool.ruff.format]
-# Prefer single quotes; docstrings and triple-quoted strings stay double (PEP 257).
 quote-style = "single"
 
 [tool.ruff.lint]
-# E/F/W  — pycodestyle + pyflakes (core errors)
-# B      — flake8-bugbear (likely bugs)
-# C4     — flake8-comprehensions
-# SIM    — flake8-simplify
-# RUF    — Ruff-specific rules
 select = ["E", "F", "W", "B", "C4", "SIM", "RUF"]
 ignore = [
-    "E501", # line length is enforced by the formatter, not the linter
+    "E501", 
+    "E731", 
 ]
 
 [tool.pytest.ini_options]
-# src is the import root (packages: core, data, model, evaluation, ...).
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"
