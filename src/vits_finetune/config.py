@@ -39,6 +39,12 @@ class TrainingConfig:
     # --- loss weights ---
     mel_loss_weight: float = 45.0
     kl_loss_weight: float = 1.0
+    fm_loss_weight: float = 2.0
+    gen_loss_weight: float = 1.0
+    disc_loss_weight: float = 1.0
+
+    # --- adversarial optimizer ---
+    disc_learning_rate: float = 2e-4
 
     # --- logging / checkpointing cadence (in steps) ---
     log_every: int = 50
