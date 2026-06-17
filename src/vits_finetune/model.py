@@ -53,6 +53,10 @@ class VitsFinetuneModel(nn.Module):
             model_config.pretrained_model_name,
             cache_dir=str(model_config.cache_dir),
         )
+        # Keep the pretrained durations unless explicitly fine-tuning timing.
+        if not self.training_config.train_duration_predictor:
+            for param in self.vits.duration_predictor.parameters():
+                param.requires_grad = False
 
     def text_mask(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
         return _sequence_mask(batch['input_lengths'], batch['input_ids'].shape[1])

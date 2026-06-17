@@ -92,7 +92,9 @@ class Trainer:
         self.model = VitsFinetuneModel(model_config, config).to(self.device)
         self.discriminator = VitsDiscriminator().to(self.device)
         self.optim_g = torch.optim.AdamW(
-            self.model.parameters(), lr=config.learning_rate, betas=(0.8, 0.99)
+            (p for p in self.model.parameters() if p.requires_grad),
+            lr=config.learning_rate,
+            betas=(0.8, 0.99),
         )
         self.optim_d = torch.optim.AdamW(
             self.discriminator.parameters(),
@@ -131,10 +133,13 @@ class Trainer:
         loss_g = (
             self.config.mel_loss_weight * recon
             + self.config.kl_loss_weight * kl
-            + dur
             + self.config.gen_loss_weight * adv
             + self.config.fm_loss_weight * fm
         )
+        # Only train durations when explicitly enabled; otherwise the predictor is
+        # frozen and `dur` is logged for reference only.
+        if self.config.train_duration_predictor:
+            loss_g = loss_g + dur
         loss_g.backward()
         self.optim_g.step()
 

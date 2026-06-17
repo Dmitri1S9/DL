@@ -39,6 +39,11 @@ class TrainingConfig:
     segment_size: int = 8192  # waveform crop length (samples) fed to the decoder
     num_workers: int = 4
     seed: int = 1234
+    # The B1 voice keeps LJSpeech timing (voice conversion changes timbre, not
+    # pronunciation), so the duration predictor should stay frozen at its correct
+    # pretrained values. Training it on this data collapses durations -> too-short,
+    # sped-up speech. Set True only if fine-tuning onto a voice with new timing.
+    train_duration_predictor: bool = False
 
     # --- loss weights ---
     mel_loss_weight: float = 45.0
