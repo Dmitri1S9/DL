@@ -28,7 +28,8 @@ def load_model(
     """
     model = VitsFinetuneModel(model_config)
     if checkpoint_path is not None:
-        load_checkpoint(checkpoint_path, model)
+        # map_location=device so a GPU-saved checkpoint loads on a CPU-only machine.
+        load_checkpoint(checkpoint_path, model, map_location=device)
     model = model.to(device)
     model.eval()
     return model

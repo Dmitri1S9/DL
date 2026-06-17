@@ -15,12 +15,17 @@ from __future__ import annotations
 
 import io
 import os
+import sys
 from pathlib import Path
 
 import soundfile as sf
 import torch
 from flask import Flask, jsonify, request, send_file, send_from_directory
 from transformers import AutoTokenizer
+
+# Make `src/` importable so the demo runs with a plain `python demo/app.py`
+# (no need to remember PYTHONPATH=src).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from vits_finetune.model_config import VitsModelConfig
 from vits_finetune.synthesize import load_model, synthesize
