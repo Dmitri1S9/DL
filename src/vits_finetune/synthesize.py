@@ -8,7 +8,6 @@ import logging
 from pathlib import Path
 
 import torch
-import torchaudio
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from vits_finetune.checkpoint import load_checkpoint
@@ -27,9 +26,9 @@ def load_model(
     Returns:
         The model, ready for ``synthesize``.
     """
-    model = VitsFinetuneModel(model_config)      
+    model = VitsFinetuneModel(model_config)
     if checkpoint_path is not None:
-        load_checkpoint(checkpoint_path, model)  
+        load_checkpoint(checkpoint_path, model)
     model = model.to(device)
     model.eval()
     return model

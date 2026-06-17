@@ -5,29 +5,42 @@ from __future__ import annotations
 
 import torch
 
-padding_input_ids = lambda batch: (torch.nn.utils.rnn.pad_sequence(
-      [i["input_ids"] for i in batch], batch_first=True, padding_value=0
-    ),
-    torch.tensor([len(i["input_ids"]) for i in batch], dtype=torch.long)
-)
+def padding_input_ids(batch):
+    return (
+        torch.nn.utils.rnn.pad_sequence(
+            [i["input_ids"] for i in batch], batch_first=True, padding_value=0
+        ),
+        torch.tensor([len(i["input_ids"]) for i in batch], dtype=torch.long),
+    )
 
-padding_waveforms = lambda batch: (torch.nn.utils.rnn.pad_sequence(
-      [i["waveform"] for i in batch], batch_first=True, padding_value=0.0
-    ).unsqueeze(1),
-    torch.tensor([len(i["waveform"]) for i in batch], dtype=torch.long)
-)
 
-padding_linear_specs = lambda batch: (torch.nn.utils.rnn.pad_sequence(
-      [i["linear_spec"].transpose(0, 1) for i in batch], batch_first=True, padding_value=0.0
-    ).transpose(1, 2),
-    torch.tensor([i["linear_spec"].shape[1] for i in batch], dtype=torch.long)
-)
+def padding_waveforms(batch):
+    return (
+        torch.nn.utils.rnn.pad_sequence(
+            [i["waveform"] for i in batch], batch_first=True, padding_value=0.0
+        ).unsqueeze(1),
+        torch.tensor([len(i["waveform"]) for i in batch], dtype=torch.long),
+    )
 
-padding_mel_specs = lambda batch: (torch.nn.utils.rnn.pad_sequence(
-      [i["mel_spec"].transpose(0, 1) for i in batch], batch_first=True, padding_value=0.0
-    ).transpose(1, 2),
-    torch.tensor([i["mel_spec"].shape[1] for i in batch], dtype=torch.long)
-) 
+
+def padding_linear_specs(batch):
+    return (
+        torch.nn.utils.rnn.pad_sequence(
+            [i["linear_spec"].transpose(0, 1) for i in batch],
+            batch_first=True, padding_value=0.0,
+        ).transpose(1, 2),
+        torch.tensor([i["linear_spec"].shape[1] for i in batch], dtype=torch.long),
+    )
+
+
+def padding_mel_specs(batch):
+    return (
+        torch.nn.utils.rnn.pad_sequence(
+            [i["mel_spec"].transpose(0, 1) for i in batch],
+            batch_first=True, padding_value=0.0,
+        ).transpose(1, 2),
+        torch.tensor([i["mel_spec"].shape[1] for i in batch], dtype=torch.long),
+    )
 
 def collate_fn(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
     """Pad a list of ``VitsFinetuneDataset.__getitem__`` outputs into one batch.
@@ -45,14 +58,14 @@ def collate_fn(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
     padded_ids, input_lengths = padding_input_ids(batch)
     padded_wav, wav_lengths = padding_waveforms(batch)
     padded_linear_spec, spec_lengths = padding_linear_specs(batch)
-    padded_mel_spec, mel_lengths = padding_mel_specs(batch)
+    padded_mel_spec, _mel_lengths = padding_mel_specs(batch)
 
     # to check that it works
     # hop = 256
     # expected_spec = (wav_lengths - config.n_fft) // hop + 1
     # assert torch.all(spec_lengths == expected_spec), \
     #     f"frame mismatch: spec={spec_lengths} expected={expected_spec}"
-    
+
     return {
         "input_ids": padded_ids,
         "linear_spec": padded_linear_spec,
@@ -81,4 +94,3 @@ def collate_fn(batch: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
 #     b = collate_fn([ds[0], ds[1], ds[2]])
 #     for k, v in b.items():
 #         print(k, tuple(v.shape), v.dtype)
- 
