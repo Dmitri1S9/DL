@@ -54,27 +54,35 @@ class VitsFinetuneModel(nn.Module):
             cache_dir=str(model_config.cache_dir),
         )
 
-    text_mask = lambda self, batch: _sequence_mask(batch['input_lengths'],
-                                            batch['input_ids'].shape[1])
-    text_encoder = lambda self, text_mask, batch: self.vits.text_encoder(
+    def text_mask(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
+        return _sequence_mask(batch['input_lengths'], batch['input_ids'].shape[1])
+
+    def text_encoder(self, text_mask: torch.Tensor, batch: dict[str, torch.Tensor]):
+        return self.vits.text_encoder(
             batch['input_ids'],
             text_mask.unsqueeze(-1).float(),
             attention_mask=text_mask.float(),
         )
-    
-    spec_mask = lambda self, batch: _sequence_mask(
-            batch['spec_lengths'], batch['linear_spec'].shape[2]).unsqueeze(1).float()
 
-    audio_encoder = lambda self, batch, spec_mask: self.vits.posterior_encoder(
-        batch['linear_spec'],
-        spec_mask,
-    )
+    def spec_mask(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
+        return _sequence_mask(
+            batch['spec_lengths'], batch['linear_spec'].shape[2]
+        ).unsqueeze(1).float()
 
-    flow = property(lambda self: self.vits.flow)
-    
-    duration_predictor = property(lambda self: self.vits.duration_predictor)
+    def audio_encoder(self, batch: dict[str, torch.Tensor], spec_mask: torch.Tensor):
+        return self.vits.posterior_encoder(batch['linear_spec'], spec_mask)
 
-    decoder = property(lambda self: self.vits.decoder)
+    @property
+    def flow(self):
+        return self.vits.flow
+
+    @property
+    def duration_predictor(self):
+        return self.vits.duration_predictor
+
+    @property
+    def decoder(self):
+        return self.vits.decoder
 
     def forward_train(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Run the VITS *training* forward pass on a padded batch from ``collate.collate_fn``.
@@ -100,7 +108,7 @@ class VitsFinetuneModel(nn.Module):
         text_out = self.text_encoder(text_mask, batch)
         prior_mean = text_out.prior_means.transpose(1, 2)
         prior_log_stddev = text_out.prior_log_variances.transpose(1, 2)
-        last_hidden_state = text_out.last_hidden_state 
+        last_hidden_state = text_out.last_hidden_state
 
         spec_mask = self.spec_mask(batch)
         z, posterior_mean, posterior_log_stddev = self.audio_encoder(batch, spec_mask)
@@ -108,12 +116,12 @@ class VitsFinetuneModel(nn.Module):
         z_p = self.flow(z, spec_mask, reverse=False)
 
         # (B, T_text, T_frames)
-        neg_cent = neg_cross_entropy(z_p, prior_mean, prior_log_stddev)  
+        neg_cent = neg_cross_entropy(z_p, prior_mean, prior_log_stddev)
 
         # (B, T_text, T_frames)
         mas_mask = (
             text_mask.unsqueeze(2) & spec_mask.bool()
-        ).float() 
+        ).float()
         # MAS algorithm result
         attn = maximum_path(neg_cent, mas_mask)
 
@@ -135,7 +143,7 @@ class VitsFinetuneModel(nn.Module):
         target_mel = _slice_segments(batch['mel_spec'], starts, segment_frames)
 
         # (B, 1, segment_frames*hop)
-        predicted_waveform = self.decoder(z_segment)           
+        predicted_waveform = self.decoder(z_segment)
         predicted_mel = wav_to_mel_spectrogram(
             predicted_waveform.squeeze(1), self.training_config
         )
