@@ -29,9 +29,9 @@ class TrainingConfig:
     mel_fmax: float | None = None
 
     # --- training loop ---
-    batch_size: int = 16
+    batch_size: int = 12
     learning_rate: float = 2e-4
-    num_epochs: int = 10
+    num_epochs: int = 5
     segment_size: int = 8192 * 2 # waveform crop length (samples) fed to the decoder
     num_workers: int = 4
     seed: int = 1234
@@ -40,9 +40,8 @@ class TrainingConfig:
     mel_loss_weight: float = 45.0
     kl_loss_weight: float = 1.0
 
-    # --- logging / checkpointing cadence (in steps) ---
+    # --- logging cadence (in steps); checkpoints are saved once per epoch ---
     log_every: int = 50
-    checkpoint_every: int = 1000
 
     # --- dataset (HuggingFace Hub, see data/push_b1_dataset.py) ---
     dataset_repo_id: str = 'Dmi1tr13/ljspeech-b1'

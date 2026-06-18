@@ -21,7 +21,9 @@ from vits_finetune.discriminator import Discriminator
 logger = logging.getLogger(__name__)
 
 for name in ('phonemizer', 'phonemizer.backend', 'huggingface_hub', 'httpx'):
-    logging.getLogger(name).setLevel(logging.ERROR)
+    log = logging.getLogger(name)
+    log.setLevel(logging.ERROR)
+    log.propagate = False
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Fine-tune VITS on a custom voice.')
@@ -97,12 +99,6 @@ class Trainer:
                             f'Epoch {epoch} | Step {self.global_step} | '
                             + ' | '.join(f'{k}: {v:.4f}' for k, v in self.loss_dict.items())
                         )
-                    if self.global_step % self.config.checkpoint_every == 0:
-                        gp = self.config.checkpoint_dir / f'step_{self.global_step}_G.pt'
-                        dp = self.config.checkpoint_dir / f'step_{self.global_step}_D.pt'
-                        save_checkpoint(gp, self.model_G, self.optimizer_G, self.global_step, epoch)
-                        save_checkpoint(dp, self.discriminator, self.optimizer_D, self.global_step, epoch)
-                        logger.info(f'Saved checkpoints: {gp.name}, {dp.name}')
                     self.global_step += 1
 
                 gp = self.config.checkpoint_dir / f'epoch_{epoch + 1}_G.pt'
