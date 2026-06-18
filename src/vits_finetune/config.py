@@ -31,7 +31,7 @@ class TrainingConfig:
     # --- training loop ---
     batch_size: int = 16
     learning_rate: float = 2e-4
-    num_epochs: int = 2
+    num_epochs: int = 10
     segment_size: int = 8192 * 2 # waveform crop length (samples) fed to the decoder
     num_workers: int = 4
     seed: int = 1234
