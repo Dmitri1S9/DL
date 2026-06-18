@@ -115,6 +115,14 @@ class VitsFinetuneModel(nn.Module):
         z_segment, starts = _rand_slice_segments(z, batch['spec_lengths'], segment_frames)
         target_mel = _slice_segments(batch['mel_spec'], starts, segment_frames)
 
+        hop = self.training_config.hop_length
+        seg_wave = segment_frames * hop
+        wave = batch['waveform']
+        target_waveform = wave.new_zeros((wave.shape[0], 1, seg_wave))
+        for i in range(wave.shape[0]):
+            s = int(starts[i].item()) * hop
+            target_waveform[i, 0, :] = wave[i, 0, s : s + seg_wave]
+
         # (B, 1, segment_frames*hop)
         predicted_waveform = self.decoder(z_segment)
         predicted_mel = wav_to_mel_spectrogram(
@@ -124,6 +132,8 @@ class VitsFinetuneModel(nn.Module):
         num_frames = min(predicted_mel.shape[-1], target_mel.shape[-1])
 
         return {
+            'target_waveform': target_waveform,
+            'predicted_waveform': predicted_waveform,
             'predicted_mel': predicted_mel[..., :num_frames],
             'target_mel': target_mel[..., :num_frames],
             'posterior_mean': posterior_mean,

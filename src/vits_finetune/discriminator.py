@@ -8,7 +8,6 @@ dtype = torch.float
 device = torch.device("cpu")
 
 
-
 def reshape_1D_to_2D(
             x: torch.Tensor,
             period: int
@@ -132,6 +131,17 @@ class MSD(Module):
             outs.append(out)
             fmaps.append(feature_maps)
         return outs, fmaps
+    
+
+class Discriminator(Module):
+    def __init__(self, config):
+        super().__init__()
+        self.mpd = MPD(config)
+        self.msd = MSD(config)
+    def forward(self, x):
+        mpd_outs, mpd_fmaps = self.mpd(x)
+        msd_outs, msd_fmaps = self.msd(x)
+        return mpd_outs + msd_outs, mpd_fmaps + msd_fmaps
 
 
 if __name__ == "__main__":
