@@ -12,7 +12,7 @@ from vits_finetune.checkpoint import load_checkpoint, save_checkpoint
 from vits_finetune.collate import collate_fn
 from vits_finetune.config import TrainingConfig, DiscriminatorConfig
 from vits_finetune.dataset import VitsFinetuneDataset
-from vits_finetune.losses import (kl_loss, recon_loss, discriminato_loss,
+from vits_finetune.losses import (kl_loss, recon_loss, discriminator_loss,
         feature_matching_loss, generator_adversarial_loss)
 from vits_finetune.model import VitsFinetuneModel
 from vits_finetune.model_config import VitsModelConfig
@@ -134,9 +134,12 @@ class Trainer:
 
     def __model_step(func):
         def wrapper(self, *args, **kwargs):
-            optimizer, loss = func(self, *args, **kwargs) 
+            optimizer, loss = func(self, *args, **kwargs)
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                [p for g in optimizer.param_groups for p in g['params']], 1.0
+            )
             optimizer.step()
             return loss
         return wrapper
@@ -145,7 +148,7 @@ class Trainer:
     def __discriminator_step(self, real_wave, fake_wave):
         real_outs, _ = self.discriminator(real_wave)
         fake_outs, _ = self.discriminator(fake_wave.detach())
-        d_loss = discriminato_loss(real_outs, fake_outs)
+        d_loss = discriminator_loss(real_outs, fake_outs)
         return self.optimizer_D, d_loss 
     
     @__model_step
@@ -157,6 +160,9 @@ class Trainer:
 
     @__back_step_dec
     def stepof5GOATS(self, batch) -> None:
+        self.model_G.train()
+        self.discriminator.train()
+
         outputs = self.model_G.forward_train(batch)
         fake_wave = outputs['predicted_waveform']
         real_wave = outputs['target_waveform']

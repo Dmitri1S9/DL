@@ -23,7 +23,7 @@ def kl_loss(
     )
     return (kl * z_mask).sum() / z_mask.sum()
 
-def discriminato_loss(real_outs: list[torch.Tensor], fake_outs: list[torch.Tensor]) -> torch.Tensor:
+def discriminator_loss(real_outs: list[torch.Tensor], fake_outs: list[torch.Tensor]) -> torch.Tensor:
     loss = 0
     for real_out, fake_out in zip(real_outs, fake_outs):
         loss += torch.mean((real_out - 1) ** 2) + torch.mean(fake_out ** 2)
