@@ -20,6 +20,9 @@ from vits_finetune.discriminator import Discriminator
 
 logger = logging.getLogger(__name__)
 
+for name in ('phonemizer', 'phonemizer.backend', 'huggingface_hub', 'httpx'):
+    logging.getLogger(name).setLevel(logging.ERROR)
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Fine-tune VITS on a custom voice.')
     parser.add_argument('--dataset-repo-id', default=None)
