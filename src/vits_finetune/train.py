@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import shutil
 from pathlib import Path
 
 import torch
@@ -19,6 +20,24 @@ from vits_finetune.model_config import VitsModelConfig
 from vits_finetune.discriminator import Discriminator
 
 logger = logging.getLogger(__name__)
+
+LOCAL_CKPT_DIR = Path('/content/ckpt')
+DRIVE_CKPT_DIR = Path('/content/drive/MyDrive/vits_ckpt')
+
+
+def _save_and_sync(
+    name: str,
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    step: int,
+    epoch: int,
+) -> None:
+    LOCAL_CKPT_DIR.mkdir(parents=True, exist_ok=True)
+    DRIVE_CKPT_DIR.mkdir(parents=True, exist_ok=True)
+    local_path = LOCAL_CKPT_DIR / name
+    save_checkpoint(local_path, model, optimizer, step, epoch)
+    shutil.copy(local_path, DRIVE_CKPT_DIR / name)
+
 
 for name in ('phonemizer', 'phonemizer.backend', 'huggingface_hub', 'httpx'):
     log = logging.getLogger(name)
@@ -99,13 +118,17 @@ class Trainer:
                             f'Epoch {epoch} | Step {self.global_step} | '
                             + ' | '.join(f'{k}: {v:.4f}' for k, v in self.loss_dict.items())
                         )
+                    if self.global_step % self.config.checkpoint_every == 0:
+                        _save_and_sync('step_G.pt', self.model_G, self.optimizer_G, self.global_step, epoch)
+                        _save_and_sync('step_D.pt', self.discriminator, self.optimizer_D, self.global_step, epoch)
+                        logger.info(f'Saved step checkpoint at step {self.global_step}')
                     self.global_step += 1
 
-                gp = self.config.checkpoint_dir / f'epoch_{epoch + 1}_G.pt'
-                dp = self.config.checkpoint_dir / f'epoch_{epoch + 1}_D.pt'
-                save_checkpoint(gp, self.model_G, self.optimizer_G, self.global_step, epoch + 1)
-                save_checkpoint(dp, self.discriminator, self.optimizer_D, self.global_step, epoch + 1)
-                logger.info(f'End of epoch {epoch} | Saved {gp.name}, {dp.name}')
+                gp_name = f'epoch_{epoch + 1}_G.pt'
+                dp_name = f'epoch_{epoch + 1}_D.pt'
+                _save_and_sync(gp_name, self.model_G, self.optimizer_G, self.global_step, epoch + 1)
+                _save_and_sync(dp_name, self.discriminator, self.optimizer_D, self.global_step, epoch + 1)
+                logger.info(f'End of epoch {epoch} | Saved {gp_name}, {dp_name}')
         return wrapper
     
     def __log_parts(func):

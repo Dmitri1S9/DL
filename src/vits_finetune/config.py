@@ -40,8 +40,9 @@ class TrainingConfig:
     mel_loss_weight: float = 45.0
     kl_loss_weight: float = 1.0
 
-    # --- logging cadence (in steps); checkpoints are saved once per epoch ---
+    # --- logging / checkpointing cadence (in steps) ---
     log_every: int = 50
+    checkpoint_every: int = 1000
 
     # --- dataset (HuggingFace Hub, see data/push_b1_dataset.py) ---
     dataset_repo_id: str = 'Dmi1tr13/ljspeech-b1'
