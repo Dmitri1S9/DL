@@ -88,26 +88,30 @@ class VitsFinetuneModel(nn.Module):
 
         z_p = self.flow(z, spec_mask, reverse=False)
 
-        # (B, T_text, T_frames)
-        neg_cent = neg_cross_entropy(z_p, prior_mean, prior_log_stddev)  
+        # Alignment is numerically sensitive (exp/precision, sums over 192 dims);
+        # force fp32 so AMP can't overflow neg_cent and corrupt the MAS path.
+        with torch.autocast(device_type=z_p.device.type, enabled=False):
+            # (B, T_text, T_frames)
+            neg_cent = neg_cross_entropy(z_p.float(), prior_mean.float(),
+                                         prior_log_stddev.float())
 
-        # (B, T_text, T_frames)
-        mas_mask = (
-            text_mask.unsqueeze(2) & spec_mask.bool()
-        ).float() 
-        # MAS algorithm result
-        attn = maximum_path(neg_cent, mas_mask)
+            # (B, T_text, T_frames)
+            mas_mask = (
+                text_mask.unsqueeze(2) & spec_mask.bool()
+            ).float()
+            # MAS algorithm result
+            attn = maximum_path(neg_cent, mas_mask)
 
         prior_mean = torch.matmul(prior_mean, attn)
         prior_log_stddev = torch.matmul(prior_log_stddev, attn)
         durations = attn.sum(dim=2).unsqueeze(1)  # (B, T_text)
 
-        duration_loss =self.duration_predictor(
+        duration_loss = self.duration_predictor(
             last_hidden_state.transpose(1,2),
             text_mask.unsqueeze(1).float(),
             durations=durations,
             reverse=False
-        ).mean()
+        ).sum() / text_mask.sum()
 
         segment_frames = self.training_config.segment_size // self.training_config.hop_length
         segment_frames = min(segment_frames, int(batch['spec_lengths'].min().item()))
@@ -125,9 +129,11 @@ class VitsFinetuneModel(nn.Module):
 
         # (B, 1, segment_frames*hop)
         predicted_waveform = self.decoder(z_segment)
-        predicted_mel = wav_to_mel_spectrogram(
-            predicted_waveform.squeeze(1), self.training_config
-        )
+        # torch.stft has no fp16 kernel; force fp32 for the mel under AMP.
+        with torch.autocast(device_type=predicted_waveform.device.type, enabled=False):
+            predicted_mel = wav_to_mel_spectrogram(
+                predicted_waveform.squeeze(1).float(), self.training_config
+            )
 
         num_frames = min(predicted_mel.shape[-1], target_mel.shape[-1])
 

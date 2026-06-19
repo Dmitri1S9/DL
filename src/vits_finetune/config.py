@@ -29,16 +29,22 @@ class TrainingConfig:
     mel_fmax: float | None = None
 
     # --- training loop ---
-    batch_size: int = 12
-    learning_rate: float = 2e-4
+    batch_size: int = 1
+    learning_rate: float = 1e-4  # lower than the from-scratch 2e-4 for fine-tuning
     num_epochs: int = 5
-    segment_size: int = 8192 * 2 # waveform crop length (samples) fed to the decoder
+    segment_size: int = 8192 # waveform crop length (samples) fed to the decoder
     num_workers: int = 4
     seed: int = 1234
+    grad_accum_steps: int = 1  # effective batch = batch_size * grad_accum_steps
+    grad_clip_norm: float = 1000.0  # global grad-norm cap (a hard 1.0 starved the generator)
+    disc_warmup_steps: int = 500  # train D alone this many steps before adv/fm reach G
+    use_amp: bool = True  # fp16 mixed precision (CUDA only); halves memory -> larger physical batch
 
     # --- loss weights ---
     mel_loss_weight: float = 45.0
     kl_loss_weight: float = 1.0
+    adv_loss_weight: float = 1.0
+    fm_loss_weight: float = 1.0
 
     # --- logging / checkpointing cadence (in steps) ---
     log_every: int = 50

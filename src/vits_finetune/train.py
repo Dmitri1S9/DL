@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
-import shutil
 from pathlib import Path
 
 import torch
@@ -20,29 +20,6 @@ from vits_finetune.model_config import VitsModelConfig
 from vits_finetune.discriminator import Discriminator
 
 logger = logging.getLogger(__name__)
-
-LOCAL_CKPT_DIR = Path('/content/ckpt')
-DRIVE_CKPT_DIR = Path('/content/drive/MyDrive/vits_ckpt')
-
-
-def _save_and_sync(
-    name: str,
-    model: torch.nn.Module,
-    optimizer: torch.optim.Optimizer,
-    step: int,
-    epoch: int,
-) -> None:
-    LOCAL_CKPT_DIR.mkdir(parents=True, exist_ok=True)
-    DRIVE_CKPT_DIR.mkdir(parents=True, exist_ok=True)
-    local_path = LOCAL_CKPT_DIR / name
-    save_checkpoint(local_path, model, optimizer, step, epoch)
-    shutil.copy(local_path, DRIVE_CKPT_DIR / name)
-
-
-for name in ('phonemizer', 'phonemizer.backend', 'huggingface_hub', 'httpx'):
-    log = logging.getLogger(name)
-    log.setLevel(logging.ERROR)
-    log.propagate = False
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Fine-tune VITS on a custom voice.')
@@ -87,6 +64,20 @@ class Trainer:
         self.config = config
         self.args = args
 
+        # Mixed precision: fp16 autocast for the forward/loss, GradScaler per
+        # optimizer (one each for G and D) so loss scaling/inf-checks stay
+        # independent. No-op when disabled or on CPU.
+        self.amp_enabled = config.use_amp and self.device.type == 'cuda'
+        self.scaler_G = torch.amp.GradScaler(self.device.type, enabled=self.amp_enabled)
+        self.scaler_D = torch.amp.GradScaler(self.device.type, enabled=self.amp_enabled)
+        if self.amp_enabled:
+            logger.info('AMP (fp16) enabled')
+
+    def _amp(self):
+        if not self.amp_enabled:
+            return contextlib.nullcontext()
+        return torch.autocast(device_type=self.device.type, dtype=torch.float16)
+
     def __pretrain_check(func):
             def wrapper(self):
                 if self.args.resume:
@@ -119,16 +110,18 @@ class Trainer:
                             + ' | '.join(f'{k}: {v:.4f}' for k, v in self.loss_dict.items())
                         )
                     if self.global_step % self.config.checkpoint_every == 0:
-                        _save_and_sync('step_G.pt', self.model_G, self.optimizer_G, self.global_step, epoch)
-                        _save_and_sync('step_D.pt', self.discriminator, self.optimizer_D, self.global_step, epoch)
-                        logger.info(f'Saved step checkpoint at step {self.global_step}')
+                        gp = self.config.checkpoint_dir / f'step_{self.global_step}_G.pt'
+                        dp = self.config.checkpoint_dir / f'step_{self.global_step}_D.pt'
+                        save_checkpoint(gp, self.model_G, self.optimizer_G, self.global_step, epoch)
+                        save_checkpoint(dp, self.discriminator, self.optimizer_D, self.global_step, epoch)
+                        logger.info(f'Saved checkpoints: {gp.name}, {dp.name}')
                     self.global_step += 1
 
-                gp_name = f'epoch_{epoch + 1}_G.pt'
-                dp_name = f'epoch_{epoch + 1}_D.pt'
-                _save_and_sync(gp_name, self.model_G, self.optimizer_G, self.global_step, epoch + 1)
-                _save_and_sync(dp_name, self.discriminator, self.optimizer_D, self.global_step, epoch + 1)
-                logger.info(f'End of epoch {epoch} | Saved {gp_name}, {dp_name}')
+                gp = self.config.checkpoint_dir / f'epoch_{epoch + 1}_G.pt'
+                dp = self.config.checkpoint_dir / f'epoch_{epoch + 1}_D.pt'
+                save_checkpoint(gp, self.model_G, self.optimizer_G, self.global_step, epoch + 1)
+                save_checkpoint(dp, self.discriminator, self.optimizer_D, self.global_step, epoch + 1)
+                logger.info(f'End of epoch {epoch} | Saved {gp.name}, {dp.name}')
         return wrapper
     
     def __log_parts(func):
@@ -148,8 +141,11 @@ class Trainer:
                      outputs['prior_mean'], outputs['prior_log_stddev'], outputs['z_mask'])
         adv = generator_adversarial_loss(fake_outs)
         fm = feature_matching_loss(real_fmaps, fake_fmaps)
+        gan_on = float(self.global_step >= self.config.disc_warmup_steps)
         g_loss = (self.config.mel_loss_weight * recon
-                  + self.config.kl_loss_weight * kl + dur + adv + fm)
+                  + self.config.kl_loss_weight * kl + dur
+                  + gan_on * self.config.adv_loss_weight * adv
+                  + gan_on * self.config.fm_loss_weight * fm)
         parts = {'recon': recon.item(), 'kl': kl.item(), 'dur': dur.item(),
                  'adv': adv.item(), 'fm': fm.item()}
         return g_loss, parts  
@@ -157,27 +153,37 @@ class Trainer:
     def __model_step(func):
         def wrapper(self, *args, **kwargs):
             optimizer, loss = func(self, *args, **kwargs)
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(
-                [p for g in optimizer.param_groups for p in g['params']], 1.0
-            )
-            optimizer.step()
+            scaler = self.scaler_G if optimizer is self.optimizer_G else self.scaler_D
+            # Accumulate gradients over grad_accum_steps micro-batches, then step.
+            scaler.scale(loss / self.config.grad_accum_steps).backward()
+            if (self.global_step + 1) % self.config.grad_accum_steps == 0:
+                scaler.unscale_(optimizer)  # unscale before clipping on real grads
+                torch.nn.utils.clip_grad_norm_(
+                    [p for g in optimizer.param_groups for p in g['params']],
+                    self.config.grad_clip_norm,
+                )
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
             return loss
         return wrapper
 
     @__model_step
     def __discriminator_step(self, real_wave, fake_wave):
-        real_outs, _ = self.discriminator(real_wave)
-        fake_outs, _ = self.discriminator(fake_wave.detach())
-        d_loss = discriminator_loss(real_outs, fake_outs)
-        return self.optimizer_D, d_loss 
-    
+        self.discriminator.requires_grad_(True)
+        with self._amp():
+            real_outs, _ = self.discriminator(real_wave)
+            fake_outs, _ = self.discriminator(fake_wave.detach())
+            d_loss = discriminator_loss(real_outs, fake_outs)
+        return self.optimizer_D, d_loss
+
     @__model_step
     def __generator_step(self, outputs, real_wave, fake_wave):
-        fake_outs, fake_fmaps = self.discriminator(fake_wave)
-        _, real_fmaps = self.discriminator(real_wave)
-        g_loss, _ = self.__calculate_loss_g(outputs, fake_outs, real_fmaps, fake_fmaps)
+        self.discriminator.requires_grad_(False)
+        with self._amp():
+            fake_outs, fake_fmaps = self.discriminator(fake_wave)
+            _, real_fmaps = self.discriminator(real_wave)
+            g_loss, _ = self.__calculate_loss_g(outputs, fake_outs, real_fmaps, fake_fmaps)
         return self.optimizer_G, g_loss
 
     @__back_step_dec
@@ -185,7 +191,8 @@ class Trainer:
         self.model_G.train()
         self.discriminator.train()
 
-        outputs = self.model_G.forward_train(batch)
+        with self._amp():
+            outputs = self.model_G.forward_train(batch)
         fake_wave = outputs['predicted_waveform']
         real_wave = outputs['target_waveform']
 
