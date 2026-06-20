@@ -28,6 +28,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--batch-size', type=int, default=None)
     parser.add_argument('--learning-rate', type=float, default=None)
     parser.add_argument('--num-epochs', type=int, default=None)
+    parser.add_argument('--grad-accum-steps', type=int, default=None)
+    parser.add_argument('--grad-clip-norm', type=float, default=None)
+    parser.add_argument('--disc-warmup-steps', type=int, default=None)
+    parser.add_argument('--use-amp', action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument('--resume', type=Path, default=None)
     parser.add_argument('--device', default=None)
     return parser.parse_args()
@@ -36,7 +40,8 @@ def build_config(args: argparse.Namespace) -> TrainingConfig:
     overrides = {
         name: value
         for name in ('dataset_repo_id', 'checkpoint_dir', 'batch_size',
-                        'learning_rate', 'num_epochs')
+                        'learning_rate', 'num_epochs', 'grad_accum_steps',
+                        'grad_clip_norm', 'disc_warmup_steps', 'use_amp')
         if (value := getattr(args, name, None)) is not None
     }
     return TrainingConfig(**overrides)
@@ -210,9 +215,16 @@ class Trainer:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
     args = parse_args()
     config = build_config(args)
+    log_path = config.checkpoint_dir / 'train.log'
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s | %(levelname)s | %(message)s',
+        handlers=[logging.StreamHandler(), logging.FileHandler(log_path, encoding='utf-8')],
+    )
+    logging.getLogger('phonemizer').setLevel(logging.ERROR)  # silence "words count mismatch" spam
+    logger.info(f'Logging to {log_path}')
     model_config = VitsModelConfig()
     trainer = Trainer(config, model_config, DiscriminatorConfig(), args)
     trainer.train()
