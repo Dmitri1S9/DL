@@ -27,9 +27,9 @@ def load_model(
     Returns:
         The model, ready for ``synthesize``.
     """
-    model = VitsFinetuneModel(model_config)      
+    model = VitsFinetuneModel(model_config)
     if checkpoint_path is not None:
-        load_checkpoint(checkpoint_path, model)  
+        load_checkpoint(checkpoint_path, model, map_location=device)
     model = model.to(device)
     model.eval()
     return model
