@@ -54,3 +54,24 @@ def compute_mcd(ref_path: str, gen_path: str) -> float:
     from pymcd.mcd import Calculate_MCD
 
     return float(Calculate_MCD(MCD_mode='dtw').calculate_mcd(ref_path, gen_path))
+
+
+def compute_f0_rmse(ref_path, gen_path):
+    """F0 RMSE in Hz between two wavs (pitch difference, lower = better)."""
+    import librosa
+    import numpy as np
+
+    def get_f0(path):
+        y, sr = librosa.load(path, sr=22050)
+        f0, _, _ = librosa.pyin(y, fmin=65, fmax=400, sr=sr)
+        return f0[~np.isnan(f0)]  # keep only voiced frames
+
+    a = get_f0(ref_path)
+    b = get_f0(gen_path)
+    if len(a) == 0 or len(b) == 0:
+        return float('nan')
+
+    # the two pitch curves have different lengths, so align them with dtw first
+    _, path = librosa.sequence.dtw(X=a.reshape(1, -1), Y=b.reshape(1, -1))
+    diffs = [a[i] - b[j] for i, j in path]
+    return float(np.sqrt(np.mean(np.square(diffs))))

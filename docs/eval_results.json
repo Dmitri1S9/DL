@@ -1,0 +1,21 @@
+{
+  "n_clips": 20,
+  "results": [
+    {
+      "label": "base",
+      "n": 20,
+      "wer": 9.09,
+      "cer": 1.79,
+      "mcd_db": 10.48,
+      "f0_rmse_hz": 30.75
+    },
+    {
+      "label": "finetuned",
+      "n": 20,
+      "wer": 29.22,
+      "cer": 13.93,
+      "mcd_db": 6.19,
+      "f0_rmse_hz": 32.36
+    }
+  ]
+}
