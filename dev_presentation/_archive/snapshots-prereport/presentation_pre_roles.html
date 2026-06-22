@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project 13: Text to Speech · VITS</title>
+<link rel="stylesheet" href="reveal/reveal.css">
+<link rel="stylesheet" href="reveal/theme/white.css" id="theme">
+<link rel="stylesheet" href="reveal/plugin/highlight/monokai.css">
+<style>
+  :root {
+    --navy: #16386b;
+    --navy-soft: #1a2b4a;
+    --ink: #1f2733;
+    --accent: #1a5fb4;
+    --rule: #ccd4e0;
+    --good: #1a7f37;
+    --bad: #b3261e;
+  }
+  .reveal { font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            font-size: 27px; color: var(--ink); }
+  .reveal .slides { text-align: left; }
+  .reveal .slides > section { padding-bottom: 64px; box-sizing: border-box; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--navy); font-weight: 700;
+            text-transform: none; letter-spacing: -0.01em; line-height: 1.1; }
+  .reveal h1 { font-size: 1.9em; }
+  .reveal h2 { font-size: 1.35em; margin-bottom: 0.5em;
+            border-bottom: 3px solid var(--navy); padding-bottom: 0.18em; display: inline-block; }
+  .reveal h3 { font-size: 1.0em; color: var(--navy-soft); }
+  .reveal p, .reveal li { line-height: 1.4; }
+  .reveal strong { color: var(--navy); }
+  .reveal em { color: #444; }
+  .reveal ul { margin-left: 0.2em; }
+  .reveal li { margin: 0.22em 0; }
+  .reveal code { background: #eef1f6; padding: 1px 7px; border-radius: 4px;
+            font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.82em; color: #243; }
+  .reveal pre { box-shadow: none; width: 100%; font-size: 0.5em; }
+  .reveal pre code { border-radius: 8px; padding: 16px 18px; line-height: 1.45; border: 1px solid #2a2f3a; }
+  .reveal table { font-size: 0.66em; border-collapse: collapse; width: 100%; }
+  .reveal table th { background: var(--navy); color: #fff; padding: 7px 12px; border: 1px solid var(--navy); }
+  .reveal table td { padding: 6px 12px; border: 1px solid var(--rule); }
+  .reveal table tr:nth-child(even) td { background: #f3f6fa; }
+  .reveal .tag { color: var(--accent); font-weight: 600; }
+  .reveal blockquote { background: #f5f8fc; border-left: 5px solid var(--navy);
+            box-shadow: none; width: auto; padding: 12px 22px; font-size: 0.86em; color: #2c3744; font-style: normal; }
+  .reveal .pipeline { background: #f5f7fa; border: 1px solid #dde3ec; border-radius: 10px;
+            padding: 14px 18px; font-family: "SF Mono", Menlo, monospace; font-size: 0.6em;
+            color: var(--navy); line-height: 1.5; }
+  .reveal .footer { display: none; }
+  #gfoot { position: absolute; left: 26px; right: 84px; bottom: 16px; z-index: 30;
+            font-size: 13px; color: #97a2b3; display: none; justify-content: space-between;
+            border-top: 1px solid #e3e8f0; padding-top: 7px;
+            font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  #gfoot.show { display: flex; }
+  .reveal .lead { text-align: center; }
+  .reveal .lead h1 { font-size: 2.3em; margin-bottom: 0.1em; }
+  .reveal .lead h3 { color: #5a6678; font-weight: 400; }
+  .reveal .who { color: var(--navy); font-weight: 600; font-size: 1.05em; margin-top: 0.6em; }
+  .reveal .sub { color: #6b7689; font-size: 0.62em; }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3 { color: #fff; border-color: #fff; }
+  .reveal section[data-background-color] .sub { color: #c7d3e6; }
+  .reveal .small { font-size: 0.72em; }
+  .reveal .muted { color: #6b7689; }
+  .reveal .good { color: var(--good); font-weight: 700; }
+  .reveal .bad { color: var(--bad); font-weight: 700; }
+  .reveal .badge { display: inline-block; background: var(--navy); color: #fff;
+            border-radius: 5px; padding: 2px 10px; font-size: 0.62em; font-weight: 600; margin-bottom: 0.4em; }
+  .reveal .kpi { color: var(--accent); font-weight: 700; }
+  .reveal ul.clean { list-style: none; margin-left: 0; }
+  .reveal ul.clean li::before { content: "▸ "; color: var(--accent); font-weight: 700; }
+  /* two-column + image helpers */
+  .reveal .row { display: flex; gap: 32px; align-items: center; }
+  .reveal .row .col { flex: 1; }
+  .reveal .row .side { flex: 0 0 300px; text-align: center; }
+  .reveal .side img { max-width: 100%; max-height: 380px; border-radius: 8px; }
+  /* two big plots side by side, readable on a projector, still fits 720px */
+  .reveal .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 22px; }
+  .reveal .grid2 figure { margin: 0; text-align: center; min-width: 0; }
+  .reveal .grid2 img { width: 100%; height: auto; max-height: 360px; object-fit: contain; display: block; }
+  .reveal .grid2 figcaption { font-size: 0.5em; color: #6b7689; margin-top: 2px; line-height: 1.25; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1 · TITLE, EMIR -->
+<section data-background-color="#16386b" class="lead">
+  <div class="badge">192.151 · Introduction to Deep Learning · 2026S</div>
+  <h1>Project&nbsp;13: Text&nbsp;to&nbsp;Speech</h1>
+  <h3 style="color:#dbe6f5;">Fine-tuning <strong style="color:#9ec5ff;">VITS</strong> into a custom voice</h3>
+  <p class="who" style="color:#fff; margin-top:1.2em;">Dima&nbsp;·&nbsp;Emir&nbsp;·&nbsp;Ilya</p>
+  <p class="sub">TU Wien</p>
+  <aside class="notes">[EMIR] Hi, we're Dima, Emir and Ilya, Project 13, Text to Speech. We took a pretrained speech model and taught it a brand-new custom voice. Let me start with what we were actually trying to do.</aside>
+</section>
+
+<!-- 2 · GOAL, EMIR -->
+<section>
+  <h2>The goal</h2>
+  <div class="row">
+    <div class="col">
+      <p>Just running a pretrained TTS model isn't a project, it already speaks well. We wanted to <strong>change the voice itself</strong>.</p>
+      <ul class="clean">
+        <li class="fragment"><strong>Task:</strong> map text → audio, then <strong>fine-tune</strong> the model onto a new voice, a Star Wars <strong>B1 battle-droid</strong>.</li>
+        <li class="fragment"><strong>Why a droid?</strong> the effect is <strong>audible even without metrics</strong>: you can <em>hear</em> that fine-tuning worked.</li>
+      </ul>
+    </div>
+    <div class="side"><img src="assets/plots/droid.png" alt="B1 droid"></div>
+  </div>
+  <aside class="notes">[EMIR] The pretrained model already produces clean speech, so "make good speech" isn't the goal, it already does that. The goal is to change the voice: take the model and fine-tune it to speak as a B1 battle droid. We picked a droid on purpose, a subtle voice makes a demo ambiguous, but a droid is obvious, you can hear the change instantly.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Goal</span></div>
+</section>
+
+<!-- 3 · THREE WAYS, EMIR -->
+<section>
+  <h2>Three ways to change a TTS voice</h2>
+  <table>
+    <tr><th>Approach</th><th>What</th><th>Verdict</th></tr>
+    <tr class="fragment"><td><strong>Pre-process</strong></td><td>change the input (e.g. phoneme tweaks for an accent)</td><td>limited</td></tr>
+    <tr class="fragment"><td><strong>Post-process</strong></td><td>filter the output audio after the model</td><td>sounds unnatural</td></tr>
+    <tr class="fragment"><td><strong>Bake into the model</strong></td><td><strong>fine-tune</strong> on data in the target voice</td><td><span class="good">the real path ✓</span></td></tr>
+  </table>
+  <p class="fragment" style="margin-top:0.8em;">We <strong>bake the droid voice into the model</strong>: so it produces the voice <em>natively</em> from text, not as an after-effect.</p>
+  <aside class="notes">[EMIR] There are three ways to change the voice. You can pre-process the input, useful for an accent, but limited. You can post-process the output audio, we tried that and it sounds robotic and fake. Or you bake the voice into the model itself by fine-tuning on data in that voice, that's the real, proper way, and that's what we did. The droid becomes the model's own voice.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
+</section>
+
+<!-- 4 · DATA, EMIR -->
+<section>
+  <h2>Building the dataset</h2>
+  <div class="row">
+    <div class="col">
+      <p class="small">We needed 24h of paired text+audio in the droid voice, can't record that. So we <strong>built it with RVC</strong> (voice conversion): it repaints the <strong>timbre</strong> but keeps the <strong>pronunciation</strong>, so the original transcripts stay valid.</p>
+      <div class="pipeline fragment">LJSpeech (13,100 clips) ─► RVC → B1 droid ─► resample 22.05 kHz ─► 🤗 Hub</div>
+      <ul class="clean">
+        <li class="fragment">Published: <code>Dmi1tr13/ljspeech-b1</code></li>
+        <li class="fragment">13,100 paired clips, a full droid dataset, for free</li>
+      </ul>
+    </div>
+    <div class="side fragment"><img src="assets/plots/qr.png" alt="dataset QR" style="max-height:220px;"><p class="sub">scan → the dataset</p></div>
+  </div>
+  <aside class="notes">[EMIR] To fine-tune we need lots of paired text and audio in the droid voice, you can't record 24 hours of a droid. So we built the data: we took all of LJSpeech and ran it through RVC, a voice-conversion model, which changes the timbre to the B1 droid but keeps the words intact, so the original transcripts still match. That gave us 13,100 paired clips instantly, and we published the dataset on the Hugging Face Hub. Dima, over to the model.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Data</span></div>
+</section>
+
+<!-- 5 · WHY VITS, DIMA -->
+<section>
+  <h2>Why VITS</h2>
+  <ul class="clean">
+    <li class="fragment"><strong>End-to-end:</strong> text → waveform in <strong>one model</strong>: no separate vocoder, no intermediate spectrogram to predict then re-synthesize.</li>
+    <li class="fragment"><strong>Phoneme-level access</strong>: needed for the accent idea (future work).</li>
+    <li class="fragment"><strong>Strong pretrained base</strong> to fine-tune from: <code>kakao-enterprise/vits-ljs</code>.</li>
+  </ul>
+  <p class="fragment small" style="margin-top:0.6em;">VITS = a conditional VAE with a normalizing-flow prior, a GAN decoder, and a stochastic duration predictor. <span class="muted">(Kim, Kong &amp; Son, ICML 2021)</span></p>
+  <aside class="notes">[DIMA] Thanks. We chose VITS for three reasons. It's end-to-end, text straight to waveform in one model, no separate vocoder to train and keep in sync. It gives us phoneme-level access, which we wanted for a Russian-accent idea later. And there's a strong pretrained checkpoint to fine-tune from. Under the hood it's a conditional VAE with a normalizing flow, a GAN decoder, and a stochastic duration predictor.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>The model</span></div>
+</section>
+
+<!-- 6 · THE MODEL, DIMA -->
+<section>
+  <h2>The generator: why it isn't enough</h2>
+  <p class="small">In training the model sees <strong>both</strong> text and the real audio, and learns to rebuild the waveform:</p>
+  <div style="text-align:center; margin:2px 0 6px;">
+  <svg viewBox="0 0 980 240" style="width:92%; max-height:230px;" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+    <defs>
+      <marker id="ah" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto">
+        <path d="M0,0 L7.5,3 L0,6 Z" fill="#1a5fb4"/>
+      </marker>
+    </defs>
+    <!-- text path -->
+    <text x="20" y="51" font-size="15" font-weight="600" fill="#16386b">text</text>
+    <line x1="58" y1="46" x2="92" y2="46" stroke="#1a5fb4" stroke-width="2.2" marker-end="url(#ah)"/>
+    <rect x="96" y="24" width="160" height="44" rx="9" fill="#16386b"/>
+    <text x="176" y="51" font-size="15" fill="#fff" text-anchor="middle">Text encoder</text>
+    <line x1="256" y1="46" x2="372" y2="104" stroke="#1a5fb4" stroke-width="2.2" marker-end="url(#ah)"/>
+    <!-- audio path (training only) -->
+    <text x="14" y="198" font-size="14" font-weight="600" fill="#7488a8">real audio</text>
+    <text x="14" y="214" font-size="11" fill="#9aa1ac">(training only)</text>
+    <line x1="92" y1="193" x2="104" y2="193" stroke="#7488a8" stroke-width="2.2" marker-end="url(#ah)"/>
+    <rect x="108" y="171" width="170" height="44" rx="9" fill="#7488a8"/>
+    <text x="193" y="192" font-size="14" fill="#fff" text-anchor="middle">Posterior</text>
+    <text x="193" y="208" font-size="11" fill="#dde6f2" text-anchor="middle">encoder + flow</text>
+    <line x1="278" y1="193" x2="372" y2="150" stroke="#1a5fb4" stroke-width="2.2" marker-end="url(#ah)"/>
+    <!-- align -->
+    <rect x="376" y="94" width="168" height="64" rx="9" fill="#16386b"/>
+    <text x="460" y="120" font-size="14" fill="#fff" text-anchor="middle">align (MAS)</text>
+    <text x="460" y="140" font-size="14" fill="#fff" text-anchor="middle">+ match (KL)</text>
+    <line x1="544" y1="126" x2="612" y2="126" stroke="#1a5fb4" stroke-width="2.2" marker-end="url(#ah)"/>
+    <!-- decoder -->
+    <rect x="616" y="102" width="164" height="48" rx="9" fill="#16386b"/>
+    <text x="698" y="124" font-size="14.5" fill="#fff" text-anchor="middle">HiFi-GAN</text>
+    <text x="698" y="141" font-size="14.5" fill="#fff" text-anchor="middle">decoder</text>
+    <line x1="780" y1="126" x2="838" y2="126" stroke="#1a5fb4" stroke-width="2.2" marker-end="url(#ah)"/>
+    <text x="888" y="122" font-size="14" font-weight="600" fill="#16386b" text-anchor="middle">waveform</text>
+    <text x="888" y="140" font-size="11" fill="#9aa1ac" text-anchor="middle">compare on mel (L1)</text>
+  </svg>
+  </div>
+  <ul class="clean">
+    <li class="fragment">Trained on reconstruction (L1 on the mel) <strong>alone</strong>, the audio is <strong>weak</strong>: blurry, muffled, averaged.</li>
+    <li class="fragment">L1 can't capture fine high-frequency detail → we need a <strong>discriminator</strong>.</li>
+  </ul>
+  <blockquote class="fragment small">At <em>inference</em> there's no audio, the model never transcribes; it only goes <strong>text → speech</strong>. The real audio is used in training only, to teach the text-prior (the KL term).</blockquote>
+  <aside class="notes">[DIMA] Here's the generator. During training it gets two inputs, the text and the real audio, and learns to rebuild the waveform, comparing on the mel-spectrogram with an L1 loss. The problem: train on reconstruction alone and the audio comes out blurry and muffled, L1 just can't capture fine detail. That's exactly the gap a discriminator fills. One thing to stress: the real audio is only used in training, to teach the text side; at inference there's no audio, it's purely text to speech.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>The model</span></div>
+</section>
+
+<!-- 7 · DISCRIMINATOR, DIMA -->
+<section>
+  <h2>Discriminator: built from scratch</h2>
+  <p class="small">Hugging Face ships VITS <strong>inference-only</strong>: no discriminator. We wrote it, HiFi-GAN style:</p>
+  <div style="text-align:center; margin:6px 0 4px;">
+  <svg viewBox="0 0 980 220" style="width:92%; max-height:220px;" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+    <defs>
+      <marker id="ahd" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7.5,3 L0,6 Z" fill="#1a5fb4"/></marker>
+    </defs>
+    <text x="22" y="113" font-size="15" font-weight="600" fill="#16386b">waveform</text>
+    <line x1="118" y1="108" x2="206" y2="70" stroke="#1a5fb4" stroke-width="2.2" marker-end="url(#ahd)"/>
+    <line x1="118" y1="118" x2="206" y2="164" stroke="#1a5fb4" stroke-width="2.2" marker-end="url(#ahd)"/>
+    <rect x="210" y="40" width="266" height="52" rx="9" fill="#16386b"/>
+    <text x="343" y="62" font-size="14.5" fill="#fff" text-anchor="middle">MPD: fold by prime periods</text>
+    <text x="343" y="80" font-size="12.5" fill="#dde6f2" text-anchor="middle">2, 7, 13, … 137  →  pitch &amp; harmonics</text>
+    <rect x="210" y="148" width="266" height="52" rx="9" fill="#16386b"/>
+    <text x="343" y="170" font-size="14.5" fill="#fff" text-anchor="middle">MSD: 3 time scales</text>
+    <text x="343" y="188" font-size="12.5" fill="#dde6f2" text-anchor="middle">average-pooled  →  multi-scale structure</text>
+    <line x1="476" y1="66" x2="568" y2="92" stroke="#1a5fb4" stroke-width="2.2" marker-end="url(#ahd)"/>
+    <line x1="476" y1="174" x2="568" y2="132" stroke="#1a5fb4" stroke-width="2.2" marker-end="url(#ahd)"/>
+    <text x="578" y="96" font-size="14" font-weight="600" fill="#16386b">real / fake</text>
+    <text x="578" y="113" font-size="12" fill="#6b7689">→ adversarial loss</text>
+    <text x="578" y="140" font-size="14" font-weight="600" fill="#16386b">feature maps</text>
+    <text x="578" y="157" font-size="12" fill="#6b7689">→ feature-matching loss</text>
+  </svg>
+  </div>
+  <blockquote class="fragment small">Without the discriminator the decoder never learns realistic audio, it's the missing half of the VITS objective.</blockquote>
+  <aside class="notes">[DIMA] Hugging Face only ships VITS for inference, there's no discriminator in the package, so we wrote one from scratch, HiFi-GAN style. There are two: a multi-period discriminator that folds the waveform by prime periods to catch pitch and harmonics, and a multi-scale discriminator that looks at three time scales. Both also expose their internal feature maps, which gives us a feature-matching loss. Without this whole piece the decoder just never learns to produce realistic audio.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>The model</span></div>
+</section>
+
+<!-- 7b · MAS, DIMA -->
+<section>
+  <h2>Lining up text &amp; audio: MAS</h2>
+  <p class="small">A few text tokens, hundreds of audio frames, and <strong>no labels</strong> for which frame belongs to which token. <strong>Monotonic Alignment Search (MAS)</strong> finds the best alignment:</p>
+  <div style="text-align:center; margin:4px 0 2px;"><img src="assets/plots/mas.png" alt="MAS alignment matrix" style="max-height:208px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
+  <ul class="clean">
+    <li class="fragment">A dynamic-programming search (Viterbi-like) for the highest-likelihood <strong>monotonic</strong> text→frame map.</li>
+    <li class="fragment"><strong>Monotonic</strong> = speech moves left→right, can't skip or repeat tokens → no "babbling".</li>
+    <li class="fragment">It also gives the <strong>duration target</strong> (frames per token) for the duration loss.</li>
+  </ul>
+  <aside class="notes">[DIMA] One piece worth explaining, alignment. We have maybe ten text tokens but hundreds of audio frames, and nothing tells us which frames belong to which token. VITS solves this with Monotonic Alignment Search, MAS. It's a dynamic-programming search, like Viterbi, that finds the best monotonic mapping from text to frames, monotonic meaning speech moves left to right and can't jump back or skip, so it can't babble. As a bonus, the alignment tells us how many frames each token should last, which is exactly the target for the duration loss. With that, here's the full training step.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>The model</span></div>
+</section>
+
+<!-- 8 · TRAINING LOOP, DIMA -->
+<section>
+  <h2>How training works</h2>
+  <p class="small">Per batch: text→prior · real audio→latent <code>z</code> · flow · <strong>MAS</strong> aligns text↔frames · slice a segment → decoder → waveform → losses. Then alternate two AdamW optimizers:</p>
+  <ul class="clean">
+    <li class="fragment"><strong>D step</strong>: real vs. <em>detached</em> fake → discriminator loss</li>
+    <li class="fragment"><strong>G step</strong>: 5 losses: recon (L1 mel, <span class="kpi">×45</span>) · KL · duration · adversarial · feature-matching</li>
+  </ul>
+  <p class="fragment small" style="margin-top:0.5em;"><em>The GAN plumbing (two optimizers, detach, clip, AMP, accumulation) lives in <strong>decorators</strong>: the methods stay linear and readable; the wiring sits in the decorator.</em></p>
+  <aside class="notes">[DIMA] One training step: encode text to a prior, encode the real audio to a latent, run the flow, use Monotonic Alignment Search to line up text with audio frames, slice a short segment, decode it to a waveform, and compute the losses. Then it's a standard GAN alternation, the discriminator trains on real versus detached fake, then the generator trains on five losses to fool it, with reconstruction weighted 45×. I kept the messy GAN plumbing, two optimizers, detach, clipping, mixed precision, accumulation, inside decorators, so the actual step logic reads cleanly and the wiring lives separately.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
+</section>
+
+<!-- 9 · WHERE / HOW TRAINED, DIMA -->
+<section>
+  <h2>Where &amp; how we trained</h2>
+  <ul class="clean">
+    <li class="fragment"><strong>Colab first</strong>: sessions dropped, free tier ~15 min, ephemeral disk. Painful.</li>
+    <li class="fragment"><strong>Then local, RTX 5060 (8 GB).</strong> No disconnects, full control.</li>
+    <li class="fragment"><strong>Fitting 8 GB:</strong> batch 1 + <strong>gradient accumulation</strong>, <strong>AMP fp16</strong>, <code>num_workers=0</code> (Windows DataLoader crash).</li>
+  </ul>
+  <blockquote class="fragment small"><strong>Budget:</strong> 5 epochs · <span class="kpi">≈ 9.7 GPU-hours</span> for the final clean run (~1.9 h/epoch), plus ~3× more in failed runs &amp; debugging. Config: <code>lr 1e-4 · segment 8192 · grad-clip 10 · disc-warmup 1500</code>.</blockquote>
+  <aside class="notes">[DIMA] On compute, we started on Colab and it fought us: sessions dropped, the free tier caps around 15 minutes, disk filled with checkpoints. So I moved to my local RTX 5060, 8 gigs. To fit 8 gigs I used batch size 1 with gradient accumulation for a larger effective batch, mixed-precision fp16, and zero dataloader workers because the Windows loader kept crashing. The final clean run was 5 epochs, about 9.7 GPU-hours, roughly 1.9 hours per epoch, and that's on top of maybe three times that in failed runs and debugging.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
+</section>
+
+<!-- 10 · PROBLEMS & FIXES, DIMA -->
+<section>
+  <h2>Problems &amp; fixes: nothing converged at first</h2>
+  <p class="small">Early runs: recon stuck ~0.45, duration loss <strong>100–475</strong>, the voice came out far too fast. Three bugs:</p>
+  <table class="small">
+    <tr><th>#</th><th>Problem</th><th>Fix</th></tr>
+    <tr class="fragment"><td>1</td><td>duration loss <strong>~100× too large</strong> (averaged wrong)</td><td><code>.sum()/mask.sum()</code> → dur <span class="good">300→1.7</span></td></tr>
+    <tr class="fragment"><td>2</td><td>grad-clip too tight → killed the generator update</td><td>raise the clip → recon broke its plateau</td></tr>
+    <tr class="fragment"><td>3</td><td>fresh discriminator <strong>corrupted</strong> the pretrained decoder</td><td><strong>warm up D</strong> 1500 steps + lower LR</td></tr>
+  </table>
+  <p class="fragment good" style="margin-top:0.6em;">→ real training: recon 0.85 → 0.40, correct speech rhythm.</p>
+  <aside class="notes">[DIMA] This was the hardest and most interesting part, at first nothing converged. The reconstruction loss was stuck, the duration loss was in the hundreds, and the voice came out way too fast. Three bugs. One: the duration loss was about a hundred times too large because it was averaged wrong, fixing the normalization dropped it from three hundred to under two. Two: gradient clipping was so tight it killed the generator's updates, loosening it let reconstruction finally drop. Three: a fresh, untrained discriminator was corrupting the pretrained decoder, so I warmed up the discriminator alone for 1500 steps and lowered the learning rate. After that, real training: reconstruction fell from 0.85 to 0.40 and the rhythm became correct.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
+</section>
+
+<!-- 11 · LOSS CURVES, ILYA -->
+<section>
+  <h2>Training curves: the voice is learned</h2>
+  <div class="grid2">
+    <figure><img src="assets/plots/recon.png" alt="recon"><figcaption><strong>Reconstruction (L1 mel)</strong>: sharp drop then plateau ~0.42: the voice is learned early.</figcaption></figure>
+    <figure><img src="assets/plots/dur.png" alt="duration"><figcaption><strong>Duration</strong>: settles ~1.6 after the normalization fix: correct speech rhythm.</figcaption></figure>
+  </div>
+  <p class="small muted" style="margin-top:10px;">Reconstruction and rhythm are healthy. Next question: did the <strong>GAN</strong>: and the discriminator we built from scratch, train stably?</p>
+  <aside class="notes">[ILYA] Here's what training looked like once it worked. On the left, reconstruction drops sharply then plateaus around 0.42, the core voice is learned early on. On the right, the duration loss settles at a healthy 1.6 after we fixed the normalization bug, which gives correct rhythm. So the voice side is healthy. The next question is whether the GAN, and the discriminator Dima built from scratch, trained stably.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
+</section>
+
+<!-- 11b · GAN CURVES, ILYA -->
+<section>
+  <h2>Training curves: the GAN stayed balanced</h2>
+  <div class="grid2">
+    <figure><img src="assets/plots/adv.png" alt="adversarial"><figcaption><strong>Adversarial (generator)</strong>: oscillates ~4, never runs away.</figcaption></figure>
+    <figure><img src="assets/plots/d.png" alt="discriminator"><figcaption><strong>Discriminator</strong>: stable ~5.5; the warm-up kept it from overpowering the decoder.</figcaption></figure>
+  </div>
+  <p class="small muted" style="margin-top:10px;">Generator and discriminator stay in a <strong>stable equilibrium</strong>: neither collapses. The from-scratch discriminator is doing its job. <strong>But a converging loss doesn't prove good speech</strong> → that's what evaluation checks next.</p>
+  <aside class="notes">[ILYA] And it did. These are the two GAN losses. On the left the generator's adversarial loss oscillates around 4, it never runs away. On the right the discriminator sits stable around 5.5; the warm-up we did kept it from overpowering the pretrained decoder. Neither one collapses, so the adversarial training reached a healthy equilibrium, the discriminator Dima wrote from scratch is doing exactly its job. But here's the key point that sets up evaluation: a nice, stable loss curve does NOT prove the speech is actually intelligible. For that we need to measure the output.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
+</section>
+
+<!-- 12 · EVALUATION, ILYA -->
+<section>
+  <h2>Evaluation: what we measure</h2>
+  <p class="small">All metrics <strong>lower = better</strong>, on a <strong>held-out</strong> set (last 5% of the dataset, unseen in training):</p>
+  <ul class="clean">
+    <li class="fragment"><strong>WER / CER</strong>: <em>intelligibility.</em> Whisper transcribes our audio → compare to the text. <span class="muted">"Can a listener understand it?"</span></li>
+    <li class="fragment"><strong>MCD</strong>: <em>spectral.</em> Distance to the <strong>B1 droid reference</strong>. <span class="muted">"Did it learn the droid timbre?"</span></li>
+    <li class="fragment"><strong>F0 RMSE</strong>: <em>prosody.</em> Pitch distance to the reference.</li>
+  </ul>
+  <p class="fragment small">Before/after = one checkpoint swap, same prompts. <span class="muted">(brief asks for WER/CER + one spectral metric, we report both MCD &amp; F0.)</span></p>
+  <aside class="notes">[ILYA] We evaluate on a held-out set, the last 5% of the data the model never trained on. Three metrics, all lower-is-better. WER and CER are intelligibility: we run Whisper, an independent speech recognizer, on our audio and check how well it transcribes back to the text. MCD is spectral, how close our output is to the actual B1 droid reference, i.e. did it learn the timbre. And F0 RMSE is prosody, the pitch difference. The assignment asks for error rates plus at least one spectral metric; we report two. Before and after is just a checkpoint swap on the same prompts.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Evaluation</span></div>
+</section>
+
+<!-- 13 · RESULTS, ILYA -->
+<section>
+  <h2>Results: before / after</h2>
+  <div class="row" style="align-items:flex-start; gap:26px;">
+    <div style="flex:0 0 44%;">
+      <table>
+        <tr><th>model</th><th>WER %</th><th>CER %</th><th>MCD</th><th>F0</th></tr>
+        <tr><td>base (pretrained)</td><td>9.1</td><td>1.8</td><td>10.48</td><td>30.8</td></tr>
+        <tr class="fragment"><td><strong>fine-tuned (droid)</strong></td><td class="bad">29.2</td><td class="bad">13.9</td><td class="good">6.19</td><td>32.4</td></tr>
+      </table>
+      <p class="sub" style="margin-top:6px;">20 held-out clips · WER/CER vs text · MCD &amp; F0 (Hz) vs the droid reference · lower = better</p>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <img src="assets/plots/spectrogram.png" style="width:100%; max-height:250px; object-fit:contain; border:1px solid var(--rule); border-radius:6px;">
+      <p class="sub" style="margin-top:3px;">same sentence: the harmonic structure shifts toward the droid timbre</p>
+    </div>
+  </div>
+  <blockquote class="fragment small" style="margin-top:10px;"><strong>Reading it:</strong> MCD drops <span class="good">10.5 → 6.2 dB</span>, the voice <strong>moved to the droid timbre</strong> (fine-tuning worked). The cost: WER <span class="bad">9 → 29%</span>, it traded some <strong>clarity</strong> for the new voice. The classic timbre-vs-intelligibility trade-off.</blockquote>
+  <aside class="notes">[ILYA] These are the real numbers, on 20 held-out clips. The headline is the trade-off. MCD, the distance to the droid reference, drops from 10.5 to 6.2 decibels. That's hard proof the fine-tuning worked: the model's output is now spectrally much closer to the droid voice than the pretrained model was. The cost shows up in intelligibility: word error rate rises from 9 to 29 percent, it's understandable but less clean than the base. Pitch is about the same. So we measurably gained the new voice, at a measurable cost to clarity, and reducing that cost is our main future work.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Results</span></div>
+</section>
+
+<!-- 14 · DEMO, ILYA -->
+<section data-background-color="#16386b">
+  <h2 style="border-color:#fff;">Demo</h2>
+  <p style="margin:4px 0 2px;"><span style="color:#9ec5ff;">Same sentence, before and after:</span><br><em style="color:#bcd2ee; font-size:0.86em;">"The mission is complete. All systems are nominal. Returning to base."</em></p>
+  <div style="display:flex; flex-direction:column; gap:24px; margin-top:18px;">
+    <div>
+      <div style="color:#fff; font-weight:600;">1 · Base VITS <span style="color:#9ec5ff; font-weight:400;">(the pretrained voice, before)</span></div>
+      <audio controls preload="auto" src="assets/audio/demo_base.wav" style="width:74%; margin-top:6px;"></audio>
+    </div>
+    <div>
+      <div style="color:#fff; font-weight:600;">2 · Fine-tuned → droid <span style="color:#9ec5ff; font-weight:400;">(same line, now the droid voice)</span></div>
+      <audio controls preload="auto" src="assets/audio/demo_finetuned.wav" style="width:74%; margin-top:6px;"></audio>
+    </div>
+  </div>
+  <p style="color:#9ec5ff; margin-top:18px;">▶ same words, the <strong style="color:#fff;">voice</strong> changed.</p>
+  <aside class="notes">[ILYA] Let's hear it, the same sentence, before and after, so you hear the voice change directly. First the base VITS voice. (play 1) And now our fine-tuned model saying the exact same line, in the droid voice. (play 2) Same words, the voice changed, and it stays understandable. On some short prompts it still degrades, which is the next slide. [Backup: clips are in assets/audio/ if the players don't fire on the projector.]</aside>
+</section>
+
+<!-- 15 · FAILURE MODES, ILYA -->
+<section>
+  <h2>Failure modes &amp; limitations</h2>
+  <div class="row" style="align-items:flex-start; gap:30px;">
+    <ul class="clean" style="flex:0 0 45%;">
+      <li class="fragment"><strong>Intelligibility cost</strong>: WER up vs base; some <strong>short prompts collapse</strong>.</li>
+      <li class="fragment"><strong>Timbre ≠ hard robot</strong>: RVC moves a <em>speaker's timbre</em>, not the ring-mod buzz (a separate DSP effect).</li>
+      <li class="fragment"><strong>GAN artifacts</strong> early; <strong>over-fitting</strong> past the best epoch.</li>
+      <li class="fragment"><strong>Russian accent</strong>: left as <strong>future work</strong>.</li>
+    </ul>
+    <div class="fragment" style="flex:1; text-align:center;">
+      <img src="assets/plots/collapse.png" alt="duration collapse waveform" style="width:100%; max-height:300px; object-fit:contain; border:1px solid var(--rule); border-radius:6px;">
+      <div class="small" style="margin-top:8px;"><strong>See &amp; hear the collapse:</strong> <code>"Roger roger…"</code> → <span class="bad">0.8&nbsp;s of garble</span></div>
+      <audio controls preload="auto" src="assets/audio/demo_failure.wav" style="width:64%; margin-top:6px;"></audio>
+    </div>
+  </div>
+  <aside class="notes">[ILYA] Honest limitations. First, the intelligibility cost we just saw, and on some short punchy prompts the durations collapse and it comes out garbled, here's one: "Roger roger, all units…" should be five seconds, but it comes out as under a second of mush. (play it) Second, it's not a hard sci-fi robot, RVC transfers a speaker's timbre, not the ring-modulator buzz, so it's a brighter voice rather than mechanical; that buzz would be a separate effect. Third, typical GAN artifacts early on, and quality drops if you train past the best epoch. And the Russian accent was going to be input pre-processing, left as future work.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Limitations</span></div>
+</section>
+
+<!-- 16 · ENGINEERING, EMIR -->
+<section>
+  <h2>Engineering: a team of 3</h2>
+  <ul class="clean">
+    <li class="fragment"><strong>Contract-first.</strong> Data, model and eval talk through small fixed interfaces (a manifest, an <code>EvalResult</code>), not each other's internals.</li>
+    <li class="fragment">→ <strong>parallel</strong> work, and the model stayed <strong>swappable</strong>.</li>
+    <li class="fragment"><strong>Offline mock + smoke test</strong>: prove the wiring in seconds, no GPU.</li>
+    <li class="fragment">Reproducible: pinned deps · <code>Makefile</code> · fixed seed · <code>ruff</code> · <code>loguru</code>.</li>
+  </ul>
+  <aside class="notes">[EMIR] A word on how three of us built this without colliding. Contract-first design: the data, the model, and the evaluation only talk through small fixed interfaces, a manifest and an evaluation-result object, never each other's internals. That let us work in parallel and kept the model swappable. We also have an offline mock and a smoke test, so we can check the whole pipeline wires together in seconds without a GPU, plus pinned dependencies, a fixed seed, and lint for reproducibility.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Engineering</span></div>
+</section>
+
+<!-- 17 · TAKEAWAYS, EMIR -->
+<section>
+  <h2>Takeaways &amp; future work</h2>
+  <ul class="clean">
+    <li class="fragment">We <strong>built &amp; published a droid dataset</strong> (RVC) and <strong>fine-tuned VITS</strong> onto that voice.</li>
+    <li class="fragment">We <strong>re-implemented the GAN training</strong> from scratch, discriminator, losses, the loop, on an inference-only model.</li>
+    <li class="fragment">Result: <strong>the timbre moved to the droid</strong> (MCD 10.5→6.2) at a <strong>clarity cost</strong> (WER 9→29), a measured trade-off.</li>
+    <li class="fragment"><strong>Future:</strong> cut the WER by <strong>freezing the text/timing front-end</strong> (keeps durations stable), + the Russian accent.</li>
+  </ul>
+  <aside class="notes">[EMIR] To wrap up. We built and published our own droid dataset with RVC, and fine-tuned VITS onto that voice. We re-implemented the whole GAN training stack from scratch, discriminator, losses, the loop, because the library ships inference-only. The result is a clear, measured trade-off: the timbre moved to the droid by MCD, at a cost in intelligibility by WER. And the clear next step to cut that WER is to freeze the text and timing front-end during fine-tuning, which keeps the durations stable, plus finally adding the Russian accent. Thanks, questions?</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Summary</span></div>
+</section>
+
+<!-- 18 · TEAM + Q&A, ALL -->
+<section data-background-color="#16386b" class="lead">
+  <h1 style="color:#fff;">Thank you</h1>
+  <h3 style="color:#dbe6f5;">Questions &amp; discussion</h3>
+  <p class="sub" style="color:#9ec5ff; margin-top:0.8em;">
+    Dima, model &amp; fine-tuning&nbsp;·&nbsp;Emir, infra, data, engineering&nbsp;·&nbsp;Ilya, evaluation
+  </p>
+  <p class="sub" style="color:#c7d3e6;">github.com/Dmitri1S9/DL&nbsp;·&nbsp;🤗 Dmi1tr13/ljspeech-b1</p>
+  <aside class="notes">[ALL] Route by ownership: model → Dima, evaluation → Ilya, data &amp; engineering → Emir. Repeat each question before answering.</aside>
+</section>
+
+</div>
+<div id="gfoot"></div>
+</div>
+<script src="reveal/reveal.js"></script>
+<script src="reveal/plugin/notes/notes.js"></script>
+<script src="reveal/plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    width: 1280,
+    height: 720,
+    margin: 0.06,
+    controls: true,
+    progress: true,
+    center: false,
+    plugins: [ RevealNotes, RevealHighlight ],
+  });
+  var gfoot = document.getElementById('gfoot');
+  function updateFooter() {
+    var cur = Reveal.getCurrentSlide();
+    var src = cur ? cur.querySelector('.footer') : null;
+    if (src) { gfoot.innerHTML = src.innerHTML; gfoot.classList.add('show'); }
+    else { gfoot.classList.remove('show'); }
+  }
+  Reveal.on('ready', updateFooter);
+  Reveal.on('slidechanged', updateFooter);
+</script>
+</body>
+</html>

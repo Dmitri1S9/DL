@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project 13 — Text to Speech · VITS</title>
+<link rel="stylesheet" href="reveal/reveal.css">
+<link rel="stylesheet" href="reveal/theme/white.css" id="theme">
+<link rel="stylesheet" href="reveal/plugin/highlight/monokai.css">
+<style>
+  :root {
+    --navy: #16386b;
+    --navy-soft: #1a2b4a;
+    --ink: #1f2733;
+    --accent: #1a5fb4;
+    --rule: #ccd4e0;
+  }
+  .reveal { font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            font-size: 27px; color: var(--ink); }
+  .reveal .slides { text-align: left; }
+  /* Reserve space at the bottom of every slide so content never reaches the
+     pinned footer. */
+  .reveal .slides > section { padding-bottom: 64px; box-sizing: border-box; }
+  .reveal h1, .reveal h2, .reveal h3 { color: var(--navy); font-weight: 700;
+            text-transform: none; letter-spacing: -0.01em; line-height: 1.1; }
+  .reveal h1 { font-size: 1.9em; }
+  .reveal h2 { font-size: 1.35em; margin-bottom: 0.5em;
+            border-bottom: 3px solid var(--navy); padding-bottom: 0.18em; display: inline-block; }
+  .reveal h3 { font-size: 1.0em; color: var(--navy-soft); }
+  .reveal p, .reveal li { line-height: 1.4; }
+  .reveal strong { color: var(--navy); }
+  .reveal em { color: #444; }
+  .reveal ul { margin-left: 0.2em; }
+  .reveal li { margin: 0.22em 0; }
+  .reveal code { background: #eef1f6; padding: 1px 7px; border-radius: 4px;
+            font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.82em; color: #243; }
+  .reveal pre { box-shadow: none; width: 100%; font-size: 0.5em; }
+  .reveal pre code { border-radius: 8px; padding: 16px 18px; line-height: 1.45;
+            border: 1px solid #2a2f3a; }
+  .reveal table { font-size: 0.66em; border-collapse: collapse; width: 100%; }
+  .reveal table th { background: var(--navy); color: #fff; padding: 7px 12px; border: 1px solid var(--navy); }
+  .reveal table td { padding: 6px 12px; border: 1px solid var(--rule); }
+  .reveal table tr:nth-child(even) td { background: #f3f6fa; }
+  .reveal .tag { color: var(--accent); font-weight: 600; }
+  .reveal blockquote { background: #f5f8fc; border-left: 5px solid var(--navy);
+            box-shadow: none; width: auto; padding: 12px 22px; font-size: 0.86em; color: #2c3744; font-style: normal; }
+  .reveal .pipeline { background: #f5f7fa; border: 1px solid #dde3ec; border-radius: 10px;
+            padding: 16px 20px; font-family: "SF Mono", Menlo, monospace; font-size: 0.62em;
+            color: var(--navy); line-height: 1.5; }
+  /* Per-section .footer divs are just the DATA source — hidden in place.
+     A single #gfoot (outside .slides, so reveal's scale transform can't move it)
+     is pinned to the viewport bottom and updated per slide via JS. */
+  .reveal .footer { display: none; }
+  #gfoot { position: absolute; left: 26px; right: 84px; bottom: 16px; z-index: 30;
+            font-size: 13px; color: #97a2b3; display: none; justify-content: space-between;
+            border-top: 1px solid #e3e8f0; padding-top: 7px;
+            font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  #gfoot.show { display: flex; }
+  .reveal .lead { text-align: center; }
+  .reveal .lead h1 { font-size: 2.3em; margin-bottom: 0.1em; }
+  .reveal .lead h3 { color: #5a6678; font-weight: 400; }
+  .reveal .who { color: var(--navy); font-weight: 600; font-size: 1.05em; margin-top: 0.6em; }
+  .reveal .sub { color: #6b7689; font-size: 0.62em; }
+  /* Section (navy) slides */
+  .reveal section.section { }
+  .reveal .navy-bg { }
+  .reveal section[data-background-color] h1,
+  .reveal section[data-background-color] h2,
+  .reveal section[data-background-color] h3 { color: #fff; border-color: #fff; }
+  .reveal section[data-background-color] .sub { color: #c7d3e6; }
+  .reveal .small { font-size: 0.72em; }
+  .reveal .muted { color: #6b7689; }
+  .reveal .badge { display: inline-block; background: var(--navy); color: #fff;
+            border-radius: 5px; padding: 2px 10px; font-size: 0.62em; font-weight: 600; margin-bottom: 0.4em; }
+  .reveal .kpi { color: var(--accent); font-weight: 700; }
+  .reveal ul.clean { list-style: none; margin-left: 0; }
+  .reveal ul.clean li::before { content: "▸ "; color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1 · TITLE -->
+<section data-background-color="#16386b" class="lead">
+  <div class="badge">192.151 · Introduction to Deep Learning · 2026S</div>
+  <h1>Project&nbsp;13 — Text&nbsp;to&nbsp;Speech</h1>
+  <h3 style="color:#dbe6f5;">Fine-tuning <strong style="color:#9ec5ff;">VITS</strong> for end-to-end neural speech synthesis</h3>
+  <p class="who" style="color:#fff; margin-top:1.2em;">Dima&nbsp;·&nbsp;Emir&nbsp;·&nbsp;Ilya</p>
+  <p class="sub">TU Wien</p>
+  <aside class="notes">[EMIR] Hi everyone. We're Dima, Emir, and Ilya, and this is Project 13 — Text to Speech. Our system turns written text into spoken audio, and we built it by fine-tuning a model called VITS. Let me start with what the assignment actually asked for.</aside>
+</section>
+
+<!-- 2 · THE TASK -->
+<section>
+  <h2>The task</h2>
+  <p><strong>Build a system that maps text → audio, and evaluate it.</strong> Choose <strong>one</strong> pipeline:</p>
+  <table>
+    <tr><th></th><th>Pipeline</th><th>Stages</th></tr>
+    <tr><td>A</td><td>FastSpeech2 (text→mel) + HiFi-GAN (mel→wav)</td><td>two models</td></tr>
+    <tr><td>B</td><td>Tacotron2 (text→mel) + neural vocoder</td><td>two models</td></tr>
+    <tr class="fragment"><td><strong>C</strong></td><td><strong>VITS</strong> — end-to-end text → waveform</td><td><strong>one model</strong></td></tr>
+  </table>
+  <p class="fragment small" style="margin-top:0.6em;"><strong>Required:</strong> report <span class="tag">epochs / batch / GPU-hours</span> · qualitative gallery + failure modes · evaluate with ASR → <span class="tag">WER/CER</span> and a spectral metric (<span class="tag">MCD</span>).</p>
+  <blockquote class="fragment">We chose <strong>Option C — VITS.</strong></blockquote>
+  <aside class="notes">[EMIR] The task was simple to state: build a system that maps text to audio, and evaluate it. We had to choose one of three pipelines. A and B — FastSpeech2 and Tacotron2 — are two-stage: one model predicts a spectrogram, a second vocoder turns it into sound. Option C, VITS, is a single end-to-end model from text to waveform. The brief also required reporting our training budget — epochs, batch, GPU-hours — showing samples, discussing failure modes, and evaluating with ASR for WER/CER plus a spectral metric. We chose Option C.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>VITS · end-to-end TTS</span></div>
+</section>
+
+<!-- 3 · FOUR DECISIONS -->
+<section>
+  <h2>Our story in four decisions</h2>
+  <ol>
+    <li class="fragment"><strong>Pivoted A → C.</strong> Started on SpeechT5 + HiFi-GAN (two models); moved to <strong>VITS</strong> — one end-to-end model, better audio out of the box.</li>
+    <li class="fragment"><strong>Fine-tune, not train from scratch.</strong> Start from a strong LJSpeech checkpoint → new voice in a few GPU-hours, still <em>real</em> training.</li>
+    <li class="fragment"><strong>Built our own dataset — a "B1 Battle Droid" voice.</strong> Makes the before/after <strong>audible</strong>, not just a number.</li>
+    <li class="fragment"><strong>Wrote the VITS training loop from scratch.</strong> Hugging Face ships VITS <em>inference-only</em> — we re-implemented training, alignment, losses, and the GAN.</li>
+  </ol>
+  <aside class="notes">[EMIR] Four decisions. First — we started on the two-model SpeechT5 plan and pivoted to VITS: one model instead of two, better audio. Second — we fine-tune a pretrained checkpoint, so a new voice in GPU-hours, still real training. Third — we built our own dataset, a B1 Battle Droid voice; I'll explain why. Fourth, the big one — Hugging Face only ships VITS for inference, so we wrote the entire training loop ourselves. Dima will walk you through the model and that code. Dima?</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>Roadmap</span></div>
+</section>
+
+<!-- 4 · WHAT IS VITS (+ components) -->
+<section>
+  <h2>What is VITS?</h2>
+  <p><strong>One network, text → raw waveform</strong> — no separate vocoder, no intermediate mel. A <strong>conditional VAE</strong> with a <strong>normalizing-flow</strong> prior, an adversarial <strong>(GAN)</strong> decoder, and a <strong>stochastic duration predictor</strong>. <span class="muted small">(Kim, Kong &amp; Son, ICML 2021)</span></p>
+  <table>
+    <tr><th>Component</th><th>Role</th><th>Train</th><th>Infer</th></tr>
+    <tr><td>Text encoder</td><td>text → <strong>prior</strong> over <code>z</code></td><td>✓</td><td>✓</td></tr>
+    <tr class="fragment" data-fragment-index="1"><td><strong>Posterior encoder</strong></td><td>real-audio spectrogram → <strong>posterior</strong> <code>z</code></td><td>✓</td><td><strong>—</strong></td></tr>
+    <tr><td>Flow</td><td>invertible map <code>z ↔ z_p</code></td><td>✓</td><td>✓</td></tr>
+    <tr><td>Duration predictor</td><td>length of each token</td><td>✓</td><td>✓</td></tr>
+    <tr><td>HiFi-GAN decoder</td><td><code>z</code> → <strong>waveform</strong></td><td>✓</td><td>✓</td></tr>
+  </table>
+  <blockquote class="fragment" data-fragment-index="2"><strong>Train vs. inference:</strong> the posterior sees <em>real</em> audio (train only); the text-prior learns to match it (<strong>KL</strong>). At inference there's no audio → sample <code>z</code> from the prior.</blockquote>
+  <aside class="notes">[DIMA] What is VITS? One network from text straight to a raw waveform — no separate vocoder, no intermediate spectrogram (that seam is where two-stage systems lose quality). Under the hood it's a conditional VAE with a normalizing-flow prior, an adversarial GAN decoder, and a stochastic duration predictor. Here are the pieces — and the key subtlety is this column: the posterior encoder only exists in training. It reads the real audio to make a high-quality latent; the text prior is trained to match it — that's the KL term. At inference there's no audio, so we sample the latent from the prior and decode. That asymmetry is the heart of VITS — and it creates one hard problem.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>The model</span></div>
+</section>
+
+<!-- 5 · MAS -->
+<section>
+  <h2>The alignment problem → MAS</h2>
+  <p>Text tokens and audio frames have <strong>different lengths</strong> and <strong>no ground-truth alignment</strong>.</p>
+  <p class="fragment"><strong>Monotonic Alignment Search (MAS):</strong> a dynamic-programming search (Viterbi-like) for the highest-likelihood <strong>monotonic</strong> text→frame map.</p>
+  <div class="pipeline fragment">tokens&nbsp;→&nbsp;H&nbsp;&nbsp;E&nbsp;&nbsp;L&nbsp;&nbsp;L&nbsp;&nbsp;O<br>frames&nbsp;→&nbsp;HH&nbsp;EEE&nbsp;L&nbsp;LLLL&nbsp;OOOOO&nbsp;&nbsp;&nbsp;← monotonic, never goes backward</div>
+  <p class="fragment small">We implemented MAS <strong>from scratch</strong>: a vectorized forward pass + backward traceback. It <em>guarantees</em> a valid alignment — unlike attention, it can't skip or babble.</p>
+  <aside class="notes">[DIMA] The problem is alignment. We have a few text tokens and hundreds of audio frames, and no labels saying which frames belong to which letter. VITS solves it with Monotonic Alignment Search — a dynamic-programming search, like Viterbi, for the best monotonic map from text to frames. Monotonic means speech moves left to right, never jumping back. We implemented MAS from scratch: a vectorized forward pass then a backward traceback. It guarantees a valid alignment by construction, so unlike attention it can't skip or babble.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>Alignment</span></div>
+</section>
+
+<!-- 6 · DATA STORY -->
+<section>
+  <h2>The data story — a droid voice</h2>
+  <ul class="clean">
+    <li><strong>Base:</strong> <strong>LJSpeech</strong> — one English speaker, <span class="kpi">13,100</span> clips (~24 h).</li>
+    <li class="fragment"><strong>Fine-tune target:</strong> a custom voice <strong>we built &amp; published</strong> → <code>Dmi1tr13/ljspeech-b1</code> on the Hugging&nbsp;Face Hub.</li>
+  </ul>
+  <blockquote class="fragment">Why a <strong>"B1 Battle Droid"</strong> voice? The fine-tune's effect becomes <strong>unmistakable to the ear</strong>.</blockquote>
+  <div class="pipeline fragment">LJSpeech text ─► VITS synth ─► RVC voice conversion ─► resample 22.05 kHz ─► HF Hub</div>
+  <p class="fragment small">RVC changes <strong>timbre, not pronunciation</strong> → transcripts stay valid → instant 13,100-clip <strong>paired</strong> dataset.</p>
+  <aside class="notes">[EMIR] We needed data to fine-tune on. Our base is LJSpeech — one English speaker, ~13,000 clips, 24 hours. For a target voice we needed 24 hours of paired text and audio, which you can't just record — so we built it. We re-synthesized all of LJSpeech and voice-converted it into a B1 Battle Droid voice using RVC. Why a droid? So you can actually hear the fine-tuning work — a subtle voice makes a demo ambiguous, a Star Wars droid is obvious. And the conversion changes timbre, not words, so the transcripts stay valid — an instant paired dataset, which we published on the Hugging Face Hub. Back to Dima.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>Data</span></div>
+</section>
+
+<!-- 7 · THE CORE CHALLENGE -->
+<section data-background-color="#16386b">
+  <h2 style="border-color:#fff;">The core challenge</h2>
+  <blockquote style="background:rgba(255,255,255,0.08); border-left-color:#9ec5ff; color:#eaf1fb;"><strong style="color:#fff;">Hugging Face's <code style="background:rgba(255,255,255,0.15);color:#fff;">VitsModel</code> is inference-only.</strong><br>No training forward pass · no alignment · no losses · no discriminator.</blockquote>
+  <p style="color:#eaf1fb;">To fine-tune it, we re-implemented the <strong style="color:#fff;">entire</strong> training stack on HF's modules:</p>
+  <ul class="clean" style="color:#dbe6f5;">
+    <li class="fragment"><code style="background:rgba(255,255,255,0.15);color:#fff;">model.forward_train</code> — the training-mode forward pass</li>
+    <li class="fragment"><code style="background:rgba(255,255,255,0.15);color:#fff;">alignment.py</code> — Monotonic Alignment Search</li>
+    <li class="fragment"><code style="background:rgba(255,255,255,0.15);color:#fff;">losses.py</code> — five loss terms</li>
+    <li class="fragment"><code style="background:rgba(255,255,255,0.15);color:#fff;">discriminator.py</code> — HiFi-GAN MPD + MSD</li>
+    <li class="fragment"><code style="background:rgba(255,255,255,0.15);color:#fff;">train.py</code> — the alternating GAN loop</li>
+  </ul>
+  <p class="fragment" style="color:#9ec5ff; font-weight:600;">This is the project's main engineering contribution.</p>
+  <aside class="notes">[DIMA] Here's the core engineering challenge. Hugging Face ships VITS as inference-only — no training code at all: no forward pass, no alignment, no losses, no discriminator. So to fine-tune it, we rebuilt the entire training stack ourselves on top of Hugging Face's building blocks. Five pieces: the training forward pass, the alignment search, five loss functions, the discriminator, and the GAN loop. This was the main work of the project — let me take you through it.</aside>
+</section>
+
+<!-- 8 · FORWARD_TRAIN -->
+<section>
+  <h2><code>forward_train</code> — the training pass</h2>
+  <p class="small muted">For each batch:</p>
+  <ol class="small">
+    <li class="fragment"><strong>Text encoder</strong> → prior <code>mean</code>, <code>log-var</code></li>
+    <li class="fragment"><strong>Posterior encoder</strong> (real spectrogram) → latent <code>z</code></li>
+    <li class="fragment"><strong>Flow</strong> <code>z → z_p</code></li>
+    <li class="fragment"><strong>MAS</strong> → monotonic text→frame alignment</li>
+    <li class="fragment"><strong>Duration loss</strong> vs. MAS-derived durations</li>
+    <li class="fragment"><strong>Random segment slice</strong> of <code>z</code> → <strong>decoder</strong> → predicted waveform<br><span class="muted small">(decoder is costly → train on a short ~0.74 s crop, not the whole clip)</span></li>
+    <li class="fragment">Return waveform + mel, prior/posterior params → feed the losses</li>
+  </ol>
+  <aside class="notes">[DIMA] This is one training step. We encode the text into a prior. The posterior encoder turns the real audio into a latent code. The flow transforms it. MAS aligns text to frames, giving a duration loss. Then the important trick — step six. The decoder that generates the waveform is expensive, so instead of decoding the whole clip we take a short random slice, about three-quarters of a second, decode just that, and compare against the matching slice of real audio. That's from HiFi-GAN, and because the decoder is convolutional, a short crop trains it fine while saving huge memory.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>From-scratch trainer</span></div>
+</section>
+
+<!-- 9 · FIVE LOSSES -->
+<section>
+  <h2>The loss = five terms</h2>
+  <table>
+    <tr><th>Term</th><th>What</th><th>Weight</th></tr>
+    <tr class="fragment"><td><strong>Reconstruction</strong></td><td>L1 on the <strong>mel</strong> (predicted vs. target)</td><td><span class="kpi">45</span></td></tr>
+    <tr class="fragment"><td><strong>KL</strong></td><td>posterior ‖ prior on the latent (the VAE term)</td><td>1</td></tr>
+    <tr class="fragment"><td><strong>Duration</strong></td><td>from the stochastic duration predictor</td><td>1</td></tr>
+    <tr class="fragment"><td><strong>Adversarial</strong></td><td>least-squares GAN (LSGAN) for G and D</td><td>1</td></tr>
+    <tr class="fragment"><td><strong>Feature matching</strong></td><td>L1 on the discriminator's feature maps</td><td>1</td></tr>
+  </table>
+  <p class="fragment small" style="margin-top:0.6em;">Reconstruction is weighted <span class="kpi">45×</span> — spectrum accuracy matters most; the adversarial + feature-matching terms add realism and <strong>stabilize</strong> the GAN.</p>
+  <aside class="notes">[DIMA] All of that feeds five loss terms. Reconstruction compares the generated spectrum to the real one — and we weight it 45 times higher than the rest, because getting the spectrum right matters most. KL ties the text prior to the audio posterior — the VAE part. Duration trains the rhythm. And the adversarial and feature-matching terms come from the GAN — they add realism and, just as importantly, keep training stable.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>From-scratch trainer</span></div>
+</section>
+
+<!-- 10 · DISCRIMINATOR + GAN LOOP -->
+<section>
+  <h2>Discriminator + the GAN loop</h2>
+  <p><strong>HiFi-GAN discriminators, from scratch:</strong> <strong>MPD</strong> — audio folded by periods (2…137) → pitch &amp; harmonics; <strong>MSD</strong> — 3 time scales. Both expose feature maps → feature-matching loss.</p>
+  <ul class="clean">
+    <li class="fragment"><strong>D step</strong> — real vs. <em>detached</em> fake → discriminator loss</li>
+    <li class="fragment"><strong>G step</strong> — recon + KL + duration + adversarial + feature-matching</li>
+    <li class="fragment small">two AdamW · <code>batch 16</code> · <code>lr 2e-4</code> · resumable <code>_G/_D.pt</code> · Colab GPU</li>
+  </ul>
+  <blockquote class="fragment small"><strong>Decisive, not optional:</strong> runs <em>without</em> the discriminator were unusable — it (plus gradient clipping) is what made the audio clean.</blockquote>
+  <aside class="notes">[DIMA] Those adversarial losses need a discriminator — built from scratch, HiFi-GAN style: a Multi-Period Discriminator that folds the audio by periods to catch pitch and harmonics, and a Multi-Scale Discriminator across three time scales; both expose feature maps for the feature-matching loss. The loop is a standard GAN alternation: each step the discriminator trains first on real versus detached fake, then the generator trains on all five losses to fool it. Two AdamW optimizers, batch 16, lr 2e-4, resumable checkpoints, on a Colab GPU. And this mattered in practice — runs without the discriminator were unusable; adding it plus gradient clipping is what made the fine-tuned audio clean. Ilya will tell you how we measure it.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>From-scratch trainer</span></div>
+</section>
+
+<!-- 11 · EVALUATION -->
+<section>
+  <h2>Evaluation</h2>
+  <p>Two complementary, objective metrics (lower = better):</p>
+  <ul class="clean">
+    <li class="fragment"><strong>WER / CER</strong> — <em>intelligibility.</em> Whisper transcribes our audio → compare to text. "Can a listener understand it?"</li>
+    <li class="fragment"><strong>MCD</strong> — <em>spectral fidelity.</em> Mel Cepstral Distortion vs. real audio. "Does it sound like the target?" <span class="muted">(~5–8 dB typical.)</span></li>
+  </ul>
+  <p class="fragment small"><strong>Before/after = one flag.</strong> <code>--checkpoint pretrained</code> vs. <code>models/finetuned</code>, same prompts both times.</p>
+  <table class="fragment">
+    <tr><th>model</th><th>WER</th><th>CER</th><th>MCD</th></tr>
+    <tr><td>pretrained <code>vits-ljs</code> <span class="muted">(baseline, sanity sample)</span></td><td class="kpi">5.5%</td><td class="kpi">1.6%</td><td class="kpi">6.38 dB</td></tr>
+  </table>
+  <aside class="notes">[ILYA] We evaluate with two metrics that measure different things, and for both lower is better. First, word and character error rate — intelligibility. We run an off-the-shelf ASR, Whisper, on our audio and check how well it transcribes back to the original text — can a listener understand it? Second, MCD, Mel Cepstral Distortion — spectral fidelity — how acoustically close our audio is to the real recording: does it sound like the target? And our design is clean: switching from pretrained to fine-tuned is a single flag on the same prompts. Our pretrained baseline is 5.5% word error rate and an MCD of 6.4 decibels — a solid start.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>Evaluation</span></div>
+</section>
+
+<!-- 12 · ENGINEERING -->
+<section>
+  <h2>Engineering — built by a team of 3</h2>
+  <ul class="clean">
+    <li class="fragment"><strong>Contract-first architecture.</strong> Stages talk through tiny contracts in <code>core/</code> (a manifest, an <code>EvalResult</code>), not internals.</li>
+    <li class="fragment">→ <strong>parallel</strong> work, and the model stayed <strong>swappable</strong> — the A→C pivot barely touched anything downstream.</li>
+    <li class="fragment"><strong>Offline mock + smoke test</strong> (<code>make all</code>) — prove the wiring in seconds, no GPU/downloads.</li>
+    <li class="fragment">Reproducible: pinned deps · <code>Makefile</code> one-liners · fixed seed · <code>ruff</code> · <code>loguru</code>.</li>
+  </ul>
+  <aside class="notes">[EMIR] A quick word on how three people built this without stepping on each other. We used a contract-first design: data, model, and evaluation talk only through small fixed interfaces, not each other's internals. Two payoffs: we could build in parallel, and when we pivoted from SpeechT5 to VITS it barely touched the rest of the code. We also have an offline mock pipeline and a smoke test, so we check the whole thing wires together in seconds, without a GPU.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>Engineering</span></div>
+</section>
+
+<!-- 13 · STATUS -->
+<section>
+  <h2>Status — honest snapshot</h2>
+  <table>
+    <tr><th>Component</th><th>State</th></tr>
+    <tr><td>Data + B1 dataset (published to HF Hub)</td><td>✅ done</td></tr>
+    <tr><td>VITS inference + checkpoint swap</td><td>✅ done</td></tr>
+    <tr><td><strong>Fine-tuning loop</strong> (forward_train · MAS · 5 losses · MPD+MSD · GAN)</td><td>✅ <strong>implemented</strong></td></tr>
+    <tr><td>Evaluation (WER/CER/MCD + before/after)</td><td>✅ done</td></tr>
+    <tr class="fragment"><td><strong>Fine-tuned on GPU</strong> — 3 epochs, NVIDIA L4 (Colab Pro); best @ epoch 2</td><td>✅ <strong>trained</strong></td></tr>
+    <tr class="fragment"><td>Final fine-tuned WER/CER/MCD table + local demo page</td><td>🟡 in progress</td></tr>
+  </table>
+  <blockquote class="fragment small"><strong>The discriminator was decisive</strong> — early runs without it were unusable; adding the GAN discriminator + gradient clipping is what made the fine-tuned audio come out clean.</blockquote>
+  <aside class="notes">[EMIR] Where we stand. The full fine-tuning system is built and wired — forward pass, alignment, five losses, both discriminators, the loop. And we actually trained it: 3 epochs on an NVIDIA L4 via Colab Pro, the second epoch came out best, and we have the checkpoint plus a reproducible notebook. The honest part: early runs WITHOUT the discriminator were unusable — adding the GAN discriminator and gradient clipping is what made the audio clean. Still to finish: tabulating the fine-tuned WER/CER/MCD and a local demo page.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>Status</span></div>
+</section>
+
+<!-- 14 · FAILURE MODES -->
+<section>
+  <h2>Failure modes (and risks)</h2>
+  <ul class="clean">
+    <li class="fragment"><strong>Mispronunciation</strong> — rare words, names, numbers, via grapheme→phoneme errors (the model already uses an <strong>espeak phoneme</strong> tokenizer).</li>
+    <li class="fragment"><strong>Prosody</strong> — flat/odd rhythm; stochastic duration helps, isn't perfect.</li>
+    <li class="fragment"><strong>Artifacts</strong> — metallic/buzzing GAN artifacts, esp. early in training.</li>
+    <li class="fragment"><strong>Fine-tuning risks</strong> — too-high LR wrecks pretrained weights · GAN instability · over-fitting the B1 timbre.</li>
+    <li class="fragment"><strong>Timbre ≠ effect</strong> — RVC transfers a <em>speaker's timbre</em>, not the ring-modulator "robot" character, so the result is a brighter, thinner voice rather than a hard droid. The mechanical buzz lives in a separate DSP effect, not the training data.</li>
+  </ul>
+  <aside class="notes">[ILYA] Briefly, the failure modes. Mispronunciation of rare words and names — the model already uses an espeak phoneme tokenizer, so these are grapheme-to-phoneme errors, not a missing-phonemes problem. Prosody — rhythm can be flat. Artifacts — GANs can buzz, especially early. Fine-tuning risks — too high a learning rate wrecks the pretrained weights. And the honest one we verified by synthesizing with our checkpoint: fine-tuning DID shift the voice toward the target — brighter, thinner — but RVC transfers a speaker's TIMBRE, not the ring-modulator robot effect, and the pitch stays human. So it's a brighter voice, not a hard battle droid. That mechanical buzz is a separate DSP effect, never in the training data — to get a harder droid we'd bake that effect into the dataset or post-process the output.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>Failure modes</span></div>
+</section>
+
+<!-- 15 · DEMO -->
+<section data-background-color="#16386b">
+  <h2 style="border-color:#fff;">Demo</h2>
+  <ul class="clean" style="color:#eaf1fb; font-size:1.0em;">
+    <li><strong style="color:#fff;">Base VITS voice</strong> — the pretrained starting point <span style="color:#9ec5ff;">(the "before")</span></li>
+    <li><strong style="color:#fff;">Target B1 voice (RVC)</strong> — what our dataset teaches</li>
+    <li><strong style="color:#fff;">Fine-tuned VITS → B1</strong> — our model, text → voice directly <span style="color:#9ec5ff;">(epoch-2 checkpoint, the "after")</span></li>
+    <li class="small" style="color:#c7d3e6;">live: local HTML demo page runs the model · bonus: DSP robot effects</li>
+  </ul>
+  <p style="color:#9ec5ff; margin-top:0.8em;">▶ base&nbsp;→&nbsp;target&nbsp;→&nbsp;fine-tuned</p>
+  <aside class="notes">[ILYA] Let me play some audio. First, the base VITS voice — the pretrained starting point. (play test_0000.wav) Next, the target our dataset teaches — the B1 voice, made with RVC. (play droid_test.wav) And here's our FINE-TUNED model — it maps text straight to that voice, no converter at inference. (play the epoch-2 fine-tuned clip, or run the local HTML demo). Be honest about what it is: the result captures the RVC voice's brighter, thinner TIMBRE — it's not a hard ring-modulator robot; that buzz is a separate DSP effect. REMINDER: pre-load clips / set up the demo page; test room audio.</aside>
+</section>
+
+<!-- 16 · TAKEAWAYS -->
+<section>
+  <h2>Takeaways</h2>
+  <ul class="clean">
+    <li class="fragment"><strong>VITS</strong> = one end-to-end model: CVAE + flow + GAN + stochastic duration.</li>
+    <li class="fragment">We <strong>fine-tuned</strong> a pretrained checkpoint onto a <strong>custom voice we built &amp; published</strong> — trained 3 epochs on an L4.</li>
+    <li class="fragment">We <strong>re-implemented VITS training from scratch</strong>: MAS, five losses, HiFi-GAN MPD+MSD, the GAN loop — and the <strong>discriminator was decisive</strong> for usable audio.</li>
+    <li class="fragment"><strong>Contract-first</strong> engineering → parallel work + a cheap A→C model swap.</li>
+    <li class="fragment">Evaluated with <strong>WER/CER</strong> (intelligibility) + <strong>MCD</strong> (spectral fidelity).</li>
+  </ul>
+  <aside class="notes">[EMIR] To wrap up — five things. VITS is one end-to-end model. We fine-tuned it onto a custom voice we built and published, training 3 epochs on an L4. We re-implemented VITS training from scratch on an inference-only model — and the discriminator was what made the audio usable. Contract-first design let us build in parallel — Dima on the model and fine-tuning, me on infra and the data pipeline, Ilya on evaluation. And we evaluate with error rate for intelligibility and MCD for fidelity. Thank you — happy to take questions.</aside>
+  <div class="footer"><span>Project 13 — Text to Speech</span><span>Summary</span></div>
+</section>
+
+<!-- 17 · Q&A -->
+<section data-background-color="#16386b" class="lead">
+  <h1 style="color:#fff;">Thank you</h1>
+  <h3 style="color:#dbe6f5;">Questions &amp; discussion</h3>
+  <p class="sub" style="color:#9ec5ff; margin-top:1.2em;">github.com/Dmitri1S9/DL · 🤗 Dmi1tr13/ljspeech-b1</p>
+  <aside class="notes">[ALL] Route by ownership: model questions → Dima, evaluation → Ilya, data and engineering → Emir. Repeat each question before answering. Prepared answers are in DISCUSSION_QA.md.</aside>
+</section>
+
+</div>
+<div id="gfoot"></div>
+</div>
+<script src="reveal/reveal.js"></script>
+<script src="reveal/plugin/notes/notes.js"></script>
+<script src="reveal/plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    transitionSpeed: 'fast',
+    width: 1280,
+    height: 720,
+    margin: 0.06,
+    controls: true,
+    progress: true,
+    center: false,
+    plugins: [ RevealNotes, RevealHighlight ],
+  });
+
+  // Mirror the current slide's in-section .footer into the global footer
+  // (kept outside .slides so reveal's scale transform never shifts it).
+  var gfoot = document.getElementById('gfoot');
+  function updateFooter() {
+    var cur = Reveal.getCurrentSlide();
+    var src = cur ? cur.querySelector('.footer') : null;
+    if (src) { gfoot.innerHTML = src.innerHTML; gfoot.classList.add('show'); }
+    else { gfoot.classList.remove('show'); }
+  }
+  Reveal.on('ready', updateFooter);
+  Reveal.on('slidechanged', updateFooter);
+</script>
+</body>
+</html>
