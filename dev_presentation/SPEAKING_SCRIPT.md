@@ -5,14 +5,16 @@ Roles: **Emir** = intro + architecture + model internals + wrap-up · **Dima** =
 
 Handoffs (say the next person's name so it's smooth): Emir → **Dima** → Emir → **Dima** → **Ilya** → Emir.
 
-> ⏱️ **Pacing rule:** the 7 loss slides (17–23) are a *montage* — Dima clicks through them in ~30s total, one or two sentences for the whole block. That's the main time lever. Title / Thank-you are ~15s.
+> ⏱️ **Reality check:** good run ≈ **18 min**, fits 20 with buffer. All the variance is Dima (slower English). Two things blow the budget — guard them:
+> 1. **Loss slides (17–23) = ONE montage**, ~30s total, two sentences for all seven. Do *not* explain each.
+> 2. **Slide 15 (3 bugs)** — say the short version on the slide, don't re-derive. Title / Thank-you ~15s each.
 
 ---
 
 ## EMIR — opening (slides 0–2) · ~2 min
 
 **Slide 0 · Title**
-> Hi everyone, we're Dima, Emir and Ilya — Project 13, Text to Speech. Short version: we took a speech model that already talks fine, and taught it to talk like a Star Wars battle droid. Let me start with *why* anyone would do that.
+> Hi — we're Dima, Emir and Ilya. We took a model that already talks perfectly fine… and taught it to talk like a Star Wars battle droid. On purpose. *(beat)* This is Project 13. Let me tell you why.
 
 **Slide 1 · The goal**
 > A pretrained TTS model already produces clean speech, so "make good speech" isn't a project — it already does that. The actual goal is to **change the voice**. We fine-tune it into a B1 battle droid. And we picked a droid on purpose: a subtle voice makes a demo ambiguous, but a droid? You'll hear it instantly — you don't even need the metrics to know it worked. *(beat)* Although we did the metrics anyway, because it's a deep learning course.
@@ -71,7 +73,7 @@ Handoffs (say the next person's name so it's smooth): Emir → **Dima** → Emir
 > Compute. Colab first — it dropped my session after 15 minutes. Very generous. *(beat)* So I moved to my local RTX 5060, 8 gigs. To fit 8 gigs: batch size 1 with gradient accumulation, fp16, and zero dataloader workers because Windows kept crashing.
 
 **Slide 15 · Problems & fixes: nothing converged**
-> And at first — nothing converged. Three bugs. **One**: the duration loss was a hundred times too big, averaged wrong — fixing it dropped it from three hundred to under two. **Two**: gradient clipping was so tight it killed the generator's updates — I loosened it and reconstruction finally fell. **Three**: a fresh discriminator was corrupting the pretrained decoder, so I warmed it up for 1500 steps first. After that — real training.
+> At first — nothing worked. Three bugs. *(point at table)* Duration loss: a hundred times too big — I fixed the averaging, three hundred down to two. Grad clipping: too tight, it killed the generator — I loosened it. And a fresh discriminator was wrecking the pretrained decoder — so I warmed it up first. After that: real training.
 
 **Slide 16 · Training setup & cost**
 > The numbers: 5 epochs, about 1.9 hours each, ~9.7 GPU-hours for the clean run — plus maybe three times that in failed runs, plus baking the whole dataset with RVC. Config's on the slide: learning rate 1e-4, segment 8192, grad-clip 10, disc warm-up 1500.
@@ -93,7 +95,7 @@ Handoffs (say the next person's name so it's smooth): Emir → **Dima** → Emir
 > The payoff. **MCD drops from 10.5 to 6.0** — hard proof the fine-tuning worked, the voice moved to the droid timbre. And intelligibility lands close to the ceiling: our best checkpoint, epoch 2, is **14.4% WER** versus the **5.75%** of the real recordings. It can't beat its teacher — but it gets close. So: we gained the new voice, at a small, *measured* cost.
 
 **Slide 27 · Demo**
-> Enough talk — let's hear it. Same sentence, before and after. *(play base)* That's the base voice. *(play fine-tuned)* And that's our model — same words, now the droid. *(beat)* You can tell which one we'd trust with the Death Star plans.
+> Okay — the part you actually came for. Same sentence, before… *(play base)* …and after. *(play fine-tuned)* Same words. Different voice entirely. *(beat)* …Roger, roger.
 
 **Slide 28 · Failure modes & limitations**
 > Honest limitations. Intelligibility sits above the ceiling — understandable, but less clean than the base. It's not a *hard* sci-fi robot — RVC moves a speaker's timbre, not the ring-mod buzz; that'd be a separate effect. GAN artifacts early, and it over-fits if you train past the best epoch — which is why we don't take the last checkpoint. And the Russian accent is still future work.
@@ -106,7 +108,7 @@ Handoffs (say the next person's name so it's smooth): Emir → **Dima** → Emir
 > To wrap up: we built and published our own droid dataset with RVC, fine-tuned VITS onto it, and re-implemented the whole GAN training stack from scratch — discriminator, losses, the loop — because the library ships inference-only. The result is a clear, measured trade-off: timbre moved to the droid, at a small intelligibility cost, bounded by the data's own ceiling. Next step to close that gap: freeze the text and timing front-end during fine-tuning. Plus the accent.
 
 **Slide 30 · Thank you**
-> That's us — Dima on the model, Ilya on evaluation, me on data and infra. Thanks! Happy to take questions. *(route by ownership: model → Dima, eval → Ilya, data/infra → Emir)*
+> That's us — Dima on the model, Ilya on evaluation, me on data and infra. Thanks for listening — questions? *(route by ownership: model → Dima, eval → Ilya, data/infra → Emir)*
 
 ---
 
