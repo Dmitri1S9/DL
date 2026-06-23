@@ -182,7 +182,7 @@
     <tr><td><strong>Post-process</strong></td><td>filter the output audio after the model</td><td>sounds unnatural</td></tr>
     <tr><td><strong>Bake into the model</strong></td><td><strong>fine-tune</strong> on data in the target voice</td><td><span class="good">the real path ✓</span></td></tr>
   </table>
-  <p  style="margin-top:0.8em;">I <strong>bake the droid voice into the model</strong>: so it produces the voice <em>natively</em> from text, not as an after-effect.</p>
+  <p style="margin-top:0.8em;">Pre-processing is where I wanted the <strong>accent</strong>; I tried <strong>post-processing</strong> for the droid and it sounded unnatural, so I <strong>bake the droid voice into the model</strong>: it produces the voice <em>natively</em> from text, not as an after-effect.</p>
   <aside class="notes">[DIMA] There are three ways to change the voice. I can pre-process the input, useful for an accent, but limited. I can post-process the output audio, I tried that and it sounds robotic and fake. Or I bake the voice into the model itself by fine-tuning on data in that voice, that's the real, proper way, and that's what I did. The droid becomes the model's own voice.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
 </section>
@@ -206,7 +206,7 @@
 
 <!-- 4 · DATA, DIMA -->
 <section>
-  <h2>Building the dataset</h2>
+  <h2>Building the dataset — RVC</h2>
   <div class="row">
     <div class="col">
       <p class="small">I needed 24h of paired text+audio in the droid voice, can't record that. So I <strong>built it with RVC</strong> (voice conversion): it repaints the <strong>timbre</strong> but keeps the <strong>pronunciation</strong>, so the original transcripts stay valid.</p>
@@ -243,7 +243,7 @@
     <li><strong>Phoneme-level access</strong>: needed for the accent idea (future work).</li>
     <li><strong>Strong pretrained base</strong> to fine-tune from: <code>kakao-enterprise/vits-ljs</code>.</li>
   </ul>
-  <div  style="text-align:center; margin:8px 0 4px;">
+  <div style="text-align:center; margin:8px 0 4px;">
   <svg viewBox="0 0 960 165" style="width:94%; max-height:150px;" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
     <defs>
       <marker id="ahv" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7.5,3 L0,6 Z" fill="#1a5fb4"/></marker>
@@ -387,7 +387,8 @@
 
 <!-- 8b · ABSTRACTION, DIMA -->
 <section>
-  <h2>Abstraction: keeping the loop readable</h2>
+  <h2>Abstraction</h2>
+  <h3 style="margin-top:-0.35em; margin-bottom:0.4em; color:#5a6678; font-weight:400;">solving the readability problem — or creating it :)</h3>
   <p class="small">The GAN loop is messy: two optimizers, detach, zero-grad, backward, clip, AMP scaler, accumulation, checkpointing, all wrapped around two tiny core steps.</p>
   <ul class="clean">
     <li>I moved <strong>all that wiring into decorators</strong>, leaving only the real <strong>D-step / G-step logic</strong> in the methods.</li>
@@ -610,7 +611,7 @@ loss weights    mel 45 · kl 1 · adv 1 · fm 1</div>
       <li><strong>GAN artifacts</strong> early; <strong>over-fitting</strong> past the best epoch.</li>
       <li><strong>Russian accent</strong>: left as <strong>future work</strong>.</li>
     </ul>
-    <div  style="flex:1; text-align:center;">
+    <div style="flex:1; text-align:center;">
       <img src="assets/plots/collapse.png" alt="duration collapse waveform" style="width:100%; max-height:300px; object-fit:contain; border:1px solid var(--rule); border-radius:6px;">
       <div class="small" style="margin-top:8px;"><strong>See &amp; hear the collapse:</strong> <code>"Roger roger…"</code> → <span class="bad">0.8&nbsp;s of garble</span></div>
       <audio controls preload="auto" src="assets/audio/demo_failure.wav" style="width:64%; margin-top:6px;"></audio>
