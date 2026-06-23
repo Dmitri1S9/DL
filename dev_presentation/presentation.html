@@ -158,6 +158,20 @@
   <div class="footer"><span>Project 13: Text to Speech</span><span>Architecture</span></div>
 </section>
 
+<!-- 3 · THREE WAYS, DIMA -->
+<section>
+  <h2>Three ways to change a TTS voice</h2>
+  <table>
+    <tr><th>Approach</th><th>What</th><th>Verdict</th></tr>
+    <tr><td><strong>Pre-process</strong></td><td>change the input (e.g. phoneme tweaks for an accent)</td><td>limited</td></tr>
+    <tr><td><strong>Post-process</strong></td><td>filter the output audio after the model</td><td>sounds unnatural</td></tr>
+    <tr><td><strong>Bake into the model</strong></td><td><strong>fine-tune</strong> on data in the target voice</td><td><span class="good">the real path ✓</span></td></tr>
+  </table>
+  <p style="margin-top:0.8em;">Pre-processing is where I wanted the <strong>accent</strong>; I tried <strong>post-processing</strong> for the droid and it sounded unnatural, so I <strong>bake the droid voice into the model</strong>: it produces the voice <em>natively</em> from text, not as an after-effect.</p>
+  <aside class="notes">[DIMA] There are three ways to change the voice. I can pre-process the input, useful for an accent, but limited. I can post-process the output audio, I tried that and it sounds robotic and fake. Or I bake the voice into the model itself by fine-tuning on data in that voice, that's the real, proper way, and that's what I did. The droid becomes the model's own voice.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
+</section>
+
 <!-- 2b · IDEAS, DIMA -->
 <section>
   <h2>Where to start: the ideas</h2>
@@ -171,20 +185,6 @@
   <p class="small" style="margin-top:0.5em;">I dropped stuttering &amp; emotions (too shallow) and kept the <strong>droid</strong> as the core, accent as future work.</p>
   <aside class="notes">[DIMA] Thanks. Running a pretrained model isn't really a project, so I wanted to change the voice itself. I brainstormed four directions: a B1 droid voice, a timbre change you hear instantly; a heavy accent, which is phoneme-level; emotions, which is prosody; and stuttering, which is rhythm. I dropped stuttering and emotions as too shallow, kept the droid as the core, and left the accent as future work.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Ideas</span></div>
-</section>
-
-<!-- 3 · THREE WAYS, DIMA -->
-<section>
-  <h2>Three ways to change a TTS voice</h2>
-  <table>
-    <tr><th>Approach</th><th>What</th><th>Verdict</th></tr>
-    <tr><td><strong>Pre-process</strong></td><td>change the input (e.g. phoneme tweaks for an accent)</td><td>limited</td></tr>
-    <tr><td><strong>Post-process</strong></td><td>filter the output audio after the model</td><td>sounds unnatural</td></tr>
-    <tr><td><strong>Bake into the model</strong></td><td><strong>fine-tune</strong> on data in the target voice</td><td><span class="good">the real path ✓</span></td></tr>
-  </table>
-  <p style="margin-top:0.8em;">Pre-processing is where I wanted the <strong>accent</strong>; I tried <strong>post-processing</strong> for the droid and it sounded unnatural, so I <strong>bake the droid voice into the model</strong>: it produces the voice <em>natively</em> from text, not as an after-effect.</p>
-  <aside class="notes">[DIMA] There are three ways to change the voice. I can pre-process the input, useful for an accent, but limited. I can post-process the output audio, I tried that and it sounds robotic and fake. Or I bake the voice into the model itself by fine-tuning on data in that voice, that's the real, proper way, and that's what I did. The droid becomes the model's own voice.</aside>
-  <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
 </section>
 
 <!-- 3c · OUR CHOICE, DIMA -->
@@ -407,8 +407,23 @@
     <li><strong>Then local, RTX 5060 (8 GB).</strong> No disconnects, full control.</li>
     <li><strong>Fitting 8 GB:</strong> batch 1 + <strong>gradient accumulation</strong>, <strong>AMP fp16</strong>, <code>num_workers=0</code> (Windows DataLoader crash).</li>
   </ul>
-  <blockquote class="small">The 8 GB card is the whole reason for batch 1 + accumulation and fp16, full numbers &amp; config on the next slide.</blockquote>
+  <blockquote class="small">The 8 GB card is the whole reason for batch 1 + accumulation and fp16, full numbers &amp; config coming up.</blockquote>
   <aside class="notes">[DIMA] On compute, we started on Colab and it fought us: sessions dropped, the free tier caps around 15 minutes, disk filled with checkpoints. So I moved to my local RTX 5060, 8 gigs. To fit 8 gigs I used batch size 1 with gradient accumulation for a larger effective batch, mixed-precision fp16, and zero dataloader workers because the Windows loader kept crashing. The final clean run was 5 epochs, about 9.7 GPU-hours, roughly 1.9 hours per epoch, and that's on top of maybe three times that in failed runs and debugging.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
+</section>
+
+<!-- 10 · PROBLEMS & FIXES, DIMA -->
+<section>
+  <h2>Problems &amp; fixes: nothing converged at first</h2>
+  <p class="small">Early runs: recon stuck ~0.45, duration loss <strong>100–475</strong>, the voice came out far too fast. Three bugs:</p>
+  <table class="small">
+    <tr><th>#</th><th>Problem</th><th>Fix</th></tr>
+    <tr><td>1</td><td>duration loss <strong>~100× too large</strong> (averaged wrong)</td><td><code>.sum()/mask.sum()</code> → dur <span class="good">300→1.7</span></td></tr>
+    <tr><td>2</td><td>grad-clip too tight → killed the generator update</td><td>raise the clip → recon broke its plateau</td></tr>
+    <tr><td>3</td><td>fresh discriminator <strong>corrupted</strong> the pretrained decoder</td><td><strong>warm up D</strong> 1500 steps + lower LR</td></tr>
+  </table>
+  <p class="good" style="margin-top:0.6em;">→ real training: recon 0.85 → 0.40, correct speech rhythm.</p>
+  <aside class="notes">[DIMA] This was the hardest and most interesting part, at first nothing converged. The reconstruction loss was stuck, the duration loss was in the hundreds, and the voice came out way too fast. Three bugs. One: the duration loss was about a hundred times too large because it was averaged wrong, fixing the normalization dropped it from three hundred to under two. Two: gradient clipping was so tight it killed the generator's updates, loosening it let reconstruction finally drop. Three: a fresh, untrained discriminator was corrupting the pretrained decoder, so I warmed up the discriminator alone for 1500 steps and lowered the learning rate. After that, real training: reconstruction fell from 0.85 to 0.40 and the rhythm became correct.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
 
@@ -443,21 +458,6 @@
   </div>
   <blockquote class="small" style="margin-top:10px;">Plus <strong>~3× more</strong> in failed runs &amp; debugging, and the <strong>RVC baking</strong> of the whole 13,100-clip dataset on top. The 9.68 h is only the final clean pass, the real work was everything before it.</blockquote>
   <aside class="notes">[DIMA] The numbers. The final clean run was 5 epochs, about 1.9 hours each, roughly 9.7 GPU-hours total, plus maybe three times that in failed runs and debugging, all on my local RTX 5060. Key config: learning rate 1e-4, much gentler than the from-scratch 2e-4; batch size 1 with gradient accumulation; a decoder crop of 8192; gradient clip at 10; a discriminator warm-up of 1500 steps; mixed precision; and reconstruction weighted 45.</aside>
-  <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
-</section>
-
-<!-- 10 · PROBLEMS & FIXES, DIMA -->
-<section>
-  <h2>Problems &amp; fixes: nothing converged at first</h2>
-  <p class="small">Early runs: recon stuck ~0.45, duration loss <strong>100–475</strong>, the voice came out far too fast. Three bugs:</p>
-  <table class="small">
-    <tr><th>#</th><th>Problem</th><th>Fix</th></tr>
-    <tr><td>1</td><td>duration loss <strong>~100× too large</strong> (averaged wrong)</td><td><code>.sum()/mask.sum()</code> → dur <span class="good">300→1.7</span></td></tr>
-    <tr><td>2</td><td>grad-clip too tight → killed the generator update</td><td>raise the clip → recon broke its plateau</td></tr>
-    <tr><td>3</td><td>fresh discriminator <strong>corrupted</strong> the pretrained decoder</td><td><strong>warm up D</strong> 1500 steps + lower LR</td></tr>
-  </table>
-  <p class="good" style="margin-top:0.6em;">→ real training: recon 0.85 → 0.40, correct speech rhythm.</p>
-  <aside class="notes">[DIMA] This was the hardest and most interesting part, at first nothing converged. The reconstruction loss was stuck, the duration loss was in the hundreds, and the voice came out way too fast. Three bugs. One: the duration loss was about a hundred times too large because it was averaged wrong, fixing the normalization dropped it from three hundred to under two. Two: gradient clipping was so tight it killed the generator's updates, loosening it let reconstruction finally drop. Three: a fresh, untrained discriminator was corrupting the pretrained decoder, so I warmed up the discriminator alone for 1500 steps and lowered the learning rate. After that, real training: reconstruction fell from 0.85 to 0.40 and the rhythm became correct.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
 
@@ -664,7 +664,6 @@
   <p class="sub" style="color:#c7d3e6;">github.com/Dmitri1S9/DL&nbsp;·&nbsp;🤗 Dmi1tr13/ljspeech-b1</p>
   <aside class="notes">[ALL] Route by ownership: model → Dima, evaluation → Ilya, data &amp; engineering → Emir. Repeat each question before answering.</aside>
 </section>
-
 </div>
 <div id="gfoot"></div>
 <img id="hexicon" src="assets/plots/hex.png" alt="">
