@@ -52,6 +52,9 @@
             border-top: 1px solid #e3e8f0; padding-top: 7px;
             font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
   #gfoot.show { display: flex; }
+  #hexicon { position: fixed; top: 16px; right: 22px; width: 40px; height: 40px;
+            z-index: 40; opacity: 0.9; pointer-events: none; }
+  #hexicon.hide { display: none; }
   .reveal .lead { text-align: center; }
   .reveal .lead h1 { font-size: 2.3em; margin-bottom: 0.1em; }
   .reveal .lead h3 { color: #5a6678; font-weight: 400; }
@@ -377,7 +380,7 @@
     <li><strong>D step</strong>: real vs. <em>detached</em> fake → discriminator loss</li>
     <li><strong>G step</strong>: 5 losses: recon (L1 mel, <span class="kpi">×45</span>) · KL · duration · adversarial · feature-matching</li>
   </ul>
-  <p class="small" style="margin-top:0.5em;"><em>The GAN plumbing (two optimizers, detach, clip, AMP, accumulation) lives in <strong>decorators</strong>: the methods stay linear and readable; the wiring sits in the decorator.</em></p>
+  <p class="small" style="margin-top:0.5em;"><em><strong>I</strong> wrapped the alternation in <strong>decorators</strong> — read the method and it's linear; need the wiring, read the decorator. Logic in the function, complexity in the decorator.</em></p>
   <aside class="notes">[DIMA] One training step: encode text to a prior, encode the real audio to a latent, run the flow, use Monotonic Alignment Search to line up text with audio frames, slice a short segment, decode it to a waveform, and compute the losses. Then it's a standard GAN alternation, the discriminator trains on real versus detached fake, then the generator trains on five losses to fool it, with reconstruction weighted 45×. I kept the messy GAN plumbing, two optimizers, detach, clipping, mixed precision, accumulation, inside decorators, so the actual step logic reads cleanly and the wiring lives separately.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
@@ -656,6 +659,7 @@ loss weights    mel 45 · kl 1 · adv 1 · fm 1</div>
 
 </div>
 <div id="gfoot"></div>
+<img id="hexicon" src="assets/plots/hex.png" alt="">
 </div>
 <script src="reveal/reveal.js"></script>
 <script src="reveal/plugin/notes/notes.js"></script>
@@ -675,11 +679,17 @@ loss weights    mel 45 · kl 1 · adv 1 · fm 1</div>
     plugins: [ RevealNotes, RevealHighlight ],
   });
   var gfoot = document.getElementById('gfoot');
+  var hexicon = document.getElementById('hexicon');
   function updateFooter() {
     var cur = Reveal.getCurrentSlide();
     var src = cur ? cur.querySelector('.footer') : null;
     if (src) { gfoot.innerHTML = src.innerHTML; gfoot.classList.add('show'); }
     else { gfoot.classList.remove('show'); }
+    // hexagon badge: show on light slides, hide on dark (data-background-color) ones
+    if (hexicon) {
+      if (cur && cur.hasAttribute('data-background-color')) hexicon.classList.add('hide');
+      else hexicon.classList.remove('hide');
+    }
   }
   Reveal.on('ready', updateFooter);
   Reveal.on('slidechanged', updateFooter);
