@@ -531,11 +531,10 @@
   <ul class="clean">
     <li><strong>WER / CER</strong> (Whisper): <em>intelligibility</em>, works for any voice, droid included. <span class="muted">"Can a listener understand it?"</span></li>
     <li><strong>MCD</strong>: <em>spectral</em> closeness to the <strong>B1 droid reference</strong>, the key one here. <span class="muted">"Did it learn the droid timbre?"</span></li>
-    <li><strong>F0 RMSE</strong>: <em>pitch / prosody</em> distance to the reference.</li>
     <li><strong>The ceiling</strong>: Whisper on the <strong>real B1 recordings</strong> = 5.75% WER → no model trained on this data can score below that.</li>
   </ul>
-  <blockquote class="small"><strong>The B1 twist:</strong> we score MCD &amp; F0 against the <strong>droid reference</strong>, not the original female LJSpeech, otherwise we'd just be measuring "how un-droid-like" we are. A deliberate voice change only makes sense measured against the <em>new</em> target. <span class="muted">(brief asks WER/CER + one spectral, we report two.)</span></blockquote>
-  <aside class="notes">[ILYA] We use four numbers, all lower-is-better. WER and CER from Whisper are intelligibility, and they work for any voice including the droid. MCD is spectral closeness to the B1 droid reference, the key one, it tells us whether we learned the timbre. F0 RMSE is pitch. And we also measure the ceiling: Whisper on the real B1 recordings scores 5.75 percent, so no model trained on this data can beat that. The B1 twist that matters: we score MCD and F0 against the droid reference, not the original female LJSpeech, because comparing a droid to a female voice would just measure how un-droid-like we are. The assignment asks for error rates plus one spectral metric; we report two.</aside>
+  <blockquote class="small"><strong>The B1 twist:</strong> we score MCD against the <strong>droid reference</strong>, not the original female LJSpeech, otherwise we'd just be measuring "how un-droid-like" we are. A deliberate voice change only makes sense measured against the <em>new</em> target. <span class="muted">(brief asks WER/CER + one spectral metric.)</span></blockquote>
+  <aside class="notes">[ILYA] Three numbers, all lower-is-better. WER and CER from Whisper are intelligibility, and they work for any voice including the droid. MCD is spectral closeness to the B1 droid reference, the key one, it tells us whether we learned the timbre. And we also measure the ceiling: Whisper on the real B1 recordings scores 5.75 percent, so no model trained on this data can beat that. The B1 twist that matters: we score MCD against the droid reference, not the original female LJSpeech, because comparing a droid to a female voice would just measure how un-droid-like we are. The assignment asks for error rates plus one spectral metric, and MCD is ours.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Evaluation</span></div>
 </section>
 
@@ -545,11 +544,11 @@
   <ul class="clean">
     <li><strong>Held-out set</strong>: the last 5% of the data, never seen in training.</li>
     <li><strong>Before / after</strong>: one checkpoint swap, same prompts → apples-to-apples.</li>
-    <li><strong>Contract-first eval module</strong>: a manifest (text + reference audio) in → an <code>EvalResult</code> out; WER/CER/MCD/F0 in one pass.</li>
+    <li><strong>Contract-first eval module</strong>: a manifest (text + reference audio) in → an <code>EvalResult</code> out; WER/CER/MCD in one pass.</li>
     <li><strong>Independent ASR</strong>: Whisper is frozen and off-the-shelf, never part of training → no circularity.</li>
   </ul>
-  <div class="pipeline" style="margin-top:14px;">manifest (text + reference audio) ─► synthesize @ checkpoint ─► Whisper ASR  +  spectral compare ─► WER · CER · MCD · F0 ─► <strong>EvalResult</strong></div>
-  <aside class="notes">[ILYA] How we actually evaluate. We hold out the last 5% of the data, which the model never trains on. Before and after is a single checkpoint swap on the same prompts, so it is apples-to-apples. I built the evaluation as a small contract-first module: feed it a manifest of texts and reference audio, and it returns one result object with WER, CER, MCD and F0 in a single pass. And the ASR is Whisper, frozen and off-the-shelf, so it never touches training and there is no circularity.</aside>
+  <div class="pipeline" style="margin-top:14px;">manifest (text + reference audio) ─► synthesize @ checkpoint ─► Whisper ASR  +  spectral compare ─► WER · CER · MCD ─► <strong>EvalResult</strong></div>
+  <aside class="notes">[ILYA] How we actually evaluate. We hold out the last 5% of the data, which the model never trains on. Before and after is a single checkpoint swap on the same prompts, so it is apples-to-apples. I built the evaluation as a small contract-first module: feed it a manifest of texts and reference audio, and it returns one result object with WER, CER and MCD in a single pass. And the ASR is Whisper, frozen and off-the-shelf, so it never touches training and there is no circularity.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Evaluation</span></div>
 </section>
 
