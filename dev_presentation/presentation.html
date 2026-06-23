@@ -598,20 +598,14 @@
 <!-- 15 · FAILURE MODES, ILYA -->
 <section>
   <h2>Failure modes &amp; limitations</h2>
-  <div class="row" style="align-items:flex-start; gap:30px;">
-    <ul class="clean" style="flex:0 0 45%;">
-      <li><strong>Intelligibility cost</strong>: WER above the ceiling (~14% vs 5.75%); some <strong>short prompts collapse</strong>.</li>
-      <li><strong>Timbre ≠ hard robot</strong>: RVC moves a <em>speaker's timbre</em>, not the ring-mod buzz (a separate DSP effect).</li>
-      <li><strong>GAN artifacts</strong> early; <strong>over-fitting</strong> past the best epoch.</li>
-      <li><strong>Russian accent</strong>: left as <strong>future work</strong>.</li>
-    </ul>
-    <div style="flex:1; text-align:center;">
-      <img src="assets/plots/collapse.png" alt="duration collapse waveform" style="width:100%; max-height:300px; object-fit:contain; border:1px solid var(--rule); border-radius:6px;">
-      <div class="small" style="margin-top:8px;"><strong>See &amp; hear the collapse:</strong> <code>"Roger roger…"</code> → <span class="bad">0.8&nbsp;s of garble</span></div>
-      <audio controls preload="auto" src="assets/audio/demo_failure.wav" style="width:64%; margin-top:6px;"></audio>
-    </div>
-  </div>
-  <aside class="notes">[ILYA] Honest limitations. First, the intelligibility cost we just saw, and on some short punchy prompts the durations collapse and it comes out garbled, here's one: "Roger roger, all units…" should be five seconds, but it comes out as under a second of mush. (play it) Second, it's not a hard sci-fi robot, RVC transfers a speaker's timbre, not the ring-modulator buzz, so it's a brighter voice rather than mechanical; that buzz would be a separate effect. Third, typical GAN artifacts early on, and quality drops if you train past the best epoch. And the Russian accent was going to be input pre-processing, left as future work.</aside>
+  <p class="small">An honest accounting of where it still falls short:</p>
+  <ul class="clean">
+    <li><strong>Intelligibility cost</strong>: WER sits <strong>above the ceiling</strong> (~14% vs 5.75%) — understandable, but less clean than the base.</li>
+    <li><strong>Timbre ≠ hard robot</strong>: RVC moves a <em>speaker's timbre</em>, not the ring-mod buzz — that mechanical buzz would be a separate DSP effect.</li>
+    <li><strong>GAN artifacts</strong> early in training, and quality <strong>over-fits</strong> if pushed past the best epoch (why we don't take the last checkpoint).</li>
+    <li><strong>Russian accent</strong>: the original pre-processing idea, left as <strong>future work</strong>.</li>
+  </ul>
+  <aside class="notes">[ILYA] An honest accounting of the limitations. First, the intelligibility cost: word error rate sits above the ceiling, around 14 versus 5.75 percent, so it stays understandable but it's less clean than the base. Second, it's not a hard sci-fi robot, RVC transfers a speaker's timbre, not the ring-modulator buzz, so it's a brighter voice rather than mechanical; that buzz would be a separate effect. Third, typical GAN artifacts early on, and quality drops if you train past the best epoch, which is why we don't take the last checkpoint. And the Russian accent was going to be input pre-processing, left as future work.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Limitations</span></div>
 </section>
 
