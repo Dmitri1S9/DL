@@ -142,6 +142,23 @@
   <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
 </section>
 
+<!-- 3c · OUR CHOICE, DIMA -->
+<section>
+  <h2>Our choice: bake in a droid voice</h2>
+  <ul class="clean">
+    <li class="fragment"><strong>Core:</strong> fine-tune on a <strong>B1 droid voice</strong>; keep the <strong>accent</strong> as future work.</li>
+    <li class="fragment">Post-processing sounded bad, so instead I used <strong>RVC</strong> to build the training data.</li>
+  </ul>
+  <p class="small fragment" style="margin-top:0.5em;">Why this idea fits the project:</p>
+  <ul class="clean">
+    <li class="fragment"><strong>One consistent voice</strong> across the whole dataset.</li>
+    <li class="fragment">A unique effect, <strong>audible even without metrics</strong>.</li>
+    <li class="fragment">Injecting a voice <em>into training</em>, a real way to play with the learning itself.</li>
+  </ul>
+  <aside class="notes">[DIMA] So my choice: bake a B1 droid voice into the model, and leave the accent as future work. Post-processing sounded bad, so I built the data with RVC instead. This idea fits the project well: one consistent voice across the dataset, an effect you can hear even without metrics, and it lets me play with the training itself.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
+</section>
+
 <!-- 4 · DATA, DIMA -->
 <section>
   <h2>Building the dataset</h2>
@@ -158,6 +175,19 @@
   </div>
   <aside class="notes">[DIMA] To fine-tune I need lots of paired text and audio in the droid voice, you can't record 24 hours of a droid. So I built the data: I took all of LJSpeech and ran it through RVC, a voice-conversion model, which changes the timbre to the B1 droid but keeps the words intact, so the original transcripts still match. That gave me 13,100 paired clips instantly, and I published the dataset on the Hugging Face Hub. Emir will take the model from here.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Data</span></div>
+</section>
+
+<!-- 4b · TRADE-OFF, DIMA -->
+<section>
+  <h2>The trade-off I chose</h2>
+  <p class="small">Because the data is made by RVC, the model learns from <strong>RVC's output</strong>, not a real droid recording.</p>
+  <ul class="clean">
+    <li class="fragment"><span class="bad">↓</span> <strong>Quality can't beat the teacher</strong>: RVC is the upper bound.</li>
+    <li class="fragment"><span class="good">↑</span> But the model makes the droid voice <strong>itself</strong>, end-to-end, <strong>no second model in production</strong>.</li>
+  </ul>
+  <blockquote class="fragment small" style="margin-top:0.5em;">Post-processing = run RVC every time. Baking = the voice is built in. A conscious trade: a bit less ceiling, full autonomy. <span class="muted">(Ilya measures exactly where that ceiling sits, later.)</span></blockquote>
+  <aside class="notes">[DIMA] One trade-off I made consciously. Because the data comes from RVC, the model learns from RVC's output, so its quality can't beat that teacher, RVC is the upper bound. But in return the model produces the droid voice itself, end-to-end, with no second model in production. Post-processing would mean running RVC every single time; baking means the voice is built in. A bit less ceiling for full autonomy, and Ilya actually measured where that ceiling sits.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
 </section>
 
 <!-- 5 · WHY VITS, EMIR -->
@@ -378,28 +408,67 @@ loss weights    mel 45 · kl 1 · adv 1 · fm 1</div>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
 
-<!-- 11 · LOSS CURVES, DIMA -->
+<!-- 11a · RECON, DIMA -->
 <section>
-  <h2>Training curves: the voice is learned</h2>
-  <div class="grid2">
-    <figure><img src="assets/plots/recon.png" alt="recon"><figcaption><strong>Reconstruction (L1 mel)</strong>: sharp drop then plateau ~0.42: the voice is learned early.</figcaption></figure>
-    <figure><img src="assets/plots/dur.png" alt="duration"><figcaption><strong>Duration</strong>: settles ~1.6 after the normalization fix: correct speech rhythm.</figcaption></figure>
-  </div>
-  <p class="small muted" style="margin-top:10px;">Reconstruction and rhythm are healthy. Next question: did the <strong>GAN</strong>, and the discriminator I built from scratch, train stably?</p>
-  <aside class="notes">[DIMA] Here's what my training looked like once it worked. On the left, reconstruction drops sharply then plateaus around 0.42, the core voice is learned early on. On the right, the duration loss settles at a healthy 1.6 after I fixed the normalization bug, which gives correct rhythm. So the voice side is healthy. Next: did the GAN, and the discriminator I built from scratch, train stably?</aside>
-  <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
+  <h2>Reconstruction loss (L1 mel)</h2>
+  <div style="text-align:center;"><img src="assets/plots/recon.png" alt="reconstruction loss" style="max-height:410px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
+  <p class="small muted" style="margin-top:8px;">Sharp drop, then plateau ~0.42, best at step <strong>26,700 (0.404)</strong>: the core voice is learned early; after that the GAN slowly drifts up. <strong>That's why I don't take the last checkpoint.</strong></p>
+  <aside class="notes">[DIMA] Now the training curves, one loss at a time. Reconstruction, the L1 on the mel, drops sharply then plateaus around 0.42, best at step 26,700. The core voice is learned early; after that the GAN slowly drifts up, which is exactly why I don't just take the last checkpoint.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
 </section>
 
-<!-- 11b · GAN CURVES, DIMA -->
+<!-- 11b · DURATION, DIMA -->
 <section>
-  <h2>Training curves: the GAN stayed balanced</h2>
-  <div class="grid2">
-    <figure><img src="assets/plots/adv.png" alt="adversarial"><figcaption><strong>Adversarial (generator)</strong>: oscillates ~4, never runs away.</figcaption></figure>
-    <figure><img src="assets/plots/d.png" alt="discriminator"><figcaption><strong>Discriminator</strong>: stable ~5.5; the warm-up kept it from overpowering the decoder.</figcaption></figure>
-  </div>
-  <p class="small muted" style="margin-top:10px;">Generator and discriminator stay in a <strong>stable equilibrium</strong>: neither collapses. The from-scratch discriminator is doing its job. <strong>But a converging loss doesn't prove good speech</strong> → that's what evaluation checks next.</p>
-  <aside class="notes">[DIMA] And it did. These are the two GAN losses. On the left the generator's adversarial loss oscillates around 4, it never runs away. On the right the discriminator sits stable around 5.5; the warm-up kept it from overpowering the pretrained decoder. Neither one collapses, so the adversarial training reached a healthy equilibrium, the discriminator I wrote from scratch is doing exactly its job. But a stable loss curve does NOT prove the speech is actually intelligible, that's what evaluation checks. Over to Ilya.</aside>
-  <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
+  <h2>Duration loss</h2>
+  <div style="text-align:center;"><img src="assets/plots/dur.png" alt="duration loss" style="max-height:410px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
+  <p class="small muted" style="margin-top:8px;">After the normalization fix, duration sits at a healthy <strong>~1.6</strong> (best 1.55, was 100–475): correct, stable speech rhythm.</p>
+  <aside class="notes">[DIMA] Duration loss. After I fixed the normalization bug it sits at a healthy 1.6, it used to be in the hundreds. That gives correct, stable speech rhythm.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
+</section>
+
+<!-- 11c · KL, DIMA -->
+<section>
+  <h2>KL divergence (posterior ‖ prior)</h2>
+  <div style="text-align:center;"><img src="assets/plots/kl.png" alt="KL divergence" style="max-height:410px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
+  <p class="small muted" style="margin-top:8px;">Settles around <strong>~1.7</strong>: the text-prior successfully learns to match the audio posterior. Alignment works.</p>
+  <aside class="notes">[DIMA] KL divergence between the posterior and the prior settles around 1.7, that means the text side learns to match the audio side, so the alignment is working.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
+</section>
+
+<!-- 11d · ADV, DIMA -->
+<section>
+  <h2>Adversarial loss (generator side)</h2>
+  <div style="text-align:center;"><img src="assets/plots/adv.png" alt="adversarial loss" style="max-height:410px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
+  <p class="small muted" style="margin-top:8px;">Oscillates around <strong>~4</strong> without collapsing: a healthy GAN equilibrium, generator and discriminator stay balanced.</p>
+  <aside class="notes">[DIMA] The generator's adversarial loss oscillates around 4 and never runs away, which is a healthy GAN equilibrium.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
+</section>
+
+<!-- 11e · D, DIMA -->
+<section>
+  <h2>Discriminator loss</h2>
+  <div style="text-align:center;"><img src="assets/plots/d.png" alt="discriminator loss" style="max-height:410px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
+  <p class="small muted" style="margin-top:8px;">Stable around <strong>~5.5</strong>: neither winning nor collapsing. The warm-up kept it from overpowering the pretrained decoder.</p>
+  <aside class="notes">[DIMA] The discriminator I built from scratch stays stable around 5.5, neither winning nor collapsing. The warm-up is what kept it from overpowering the pretrained decoder.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
+</section>
+
+<!-- 11f · FM, DIMA -->
+<section>
+  <h2>Feature-matching loss</h2>
+  <div style="text-align:center;"><img src="assets/plots/fm.png" alt="feature-matching loss" style="max-height:410px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
+  <p class="small muted" style="margin-top:8px;">Early spike during warm-up, then settles <strong>~2</strong>: matches discriminator features, stabilizes the GAN.</p>
+  <aside class="notes">[DIMA] Feature-matching spikes during the warm-up, then settles around 2. It matches the discriminator's internal features and helps stabilize the whole GAN.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
+</section>
+
+<!-- 11g · G TOTAL, DIMA -->
+<section>
+  <h2>Generator loss (total)</h2>
+  <div style="text-align:center;"><img src="assets/plots/g.png" alt="generator total loss" style="max-height:400px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
+  <p class="small muted" style="margin-top:8px;">Total G loss ~28, dominated by recon×45. Flat &amp; stable. <strong>But a converging loss doesn't prove good speech</strong> → that's what evaluation checks next.</p>
+  <aside class="notes">[DIMA] And the total generator loss, around 28, dominated by reconstruction times 45, is flat and stable, so after the fixes training is well-behaved end to end. But a stable loss curve does NOT prove the speech is actually intelligible, that is exactly what evaluation checks. Over to Ilya.</aside>
+  <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
 </section>
 
 <!-- 12 · EVALUATION, ILYA -->
@@ -423,6 +492,7 @@ loss weights    mel 45 · kl 1 · adv 1 · fm 1</div>
     <li class="fragment"><strong>WER / CER</strong> (Whisper): <em>intelligibility</em>, works for any voice, droid included.</li>
     <li class="fragment"><strong>MCD</strong>: <em>spectral closeness to the target</em>, the key one here: "did it learn the droid timbre?"</li>
     <li class="fragment"><strong>F0 RMSE</strong>: <em>pitch / prosody</em> distance.</li>
+    <li class="fragment"><strong>The ceiling</strong>: we also run Whisper on the <strong>real B1 recordings</strong> (5.75% WER) → no model trained on this data can score below that bound.</li>
   </ul>
   <blockquote class="fragment small"><strong>The B1 twist:</strong> we score MCD &amp; F0 against the <strong>droid reference</strong>, not the original female LJSpeech, otherwise we'd just be measuring "how un-droid-like" we are. A deliberate voice change only makes sense measured against the <em>new</em> target.</blockquote>
   <aside class="notes">[ILYA] Why these three. WER and CER from Whisper measure intelligibility, and they work for any voice including the droid. MCD measures spectral closeness to a target voice, and it is the key metric here, it tells us whether we learned the droid timbre. F0 RMSE is pitch. And here is the B1 twist that matters: we compute MCD and F0 against the droid reference from our dataset, not against the original female LJSpeech, because comparing a droid to a female voice would just measure how un-droid-like we are. For a deliberate voice change, the spectral metric only makes sense against the new target.</aside>
@@ -445,23 +515,25 @@ loss weights    mel 45 · kl 1 · adv 1 · fm 1</div>
 
 <!-- 13 · RESULTS, ILYA -->
 <section>
-  <h2>Results: before / after</h2>
+  <h2>Results: vs the ceiling</h2>
   <div class="row" style="align-items:flex-start; gap:26px;">
-    <div style="flex:0 0 44%;">
+    <div style="flex:0 0 48%;">
       <table>
-        <tr><th>model</th><th>WER %</th><th>CER %</th><th>MCD</th><th>F0</th></tr>
-        <tr><td>base (pretrained)</td><td>9.1</td><td>1.8</td><td>10.48</td><td>30.8</td></tr>
-        <tr class="fragment"><td><strong>fine-tuned (droid)</strong></td><td class="bad">29.2</td><td class="bad">13.9</td><td class="good">6.19</td><td>32.4</td></tr>
+        <tr><th>eval set</th><th>WER %</th><th>CER %</th></tr>
+        <tr><td>real B1 recordings <em>(ceiling)</em></td><td class="good">5.75</td><td class="good">2.35</td></tr>
+        <tr class="fragment"><td><strong>fine-tuned — epoch 2 (best)</strong></td><td>14.39</td><td>7.01</td></tr>
+        <tr class="fragment"><td>fine-tuned — epoch 5</td><td>16.56</td><td>7.75</td></tr>
       </table>
-      <p class="sub" style="margin-top:6px;">20 held-out clips · WER/CER vs text · MCD &amp; F0 (Hz) vs the droid reference · lower = better</p>
+      <p class="sub" style="margin-top:6px;"><strong>655 held-out clips</strong> (full 5%) · WER/CER vs text · Whisper · lower = better</p>
+      <p class="fragment small" style="margin-top:8px;"><strong>Spectral / timbre:</strong> MCD to the droid reference <span class="good">10.5 → 6.0 dB</span> → the voice <strong>moved to the droid</strong>.</p>
     </div>
     <div style="flex:1; text-align:center;">
       <img src="assets/plots/spectrogram.png" style="width:100%; max-height:250px; object-fit:contain; border:1px solid var(--rule); border-radius:6px;">
       <p class="sub" style="margin-top:3px;">same sentence: the harmonic structure shifts toward the droid timbre</p>
     </div>
   </div>
-  <blockquote class="fragment small" style="margin-top:10px;"><strong>Reading it:</strong> MCD drops <span class="good">10.5 → 6.2 dB</span>, the voice <strong>moved to the droid timbre</strong> (fine-tuning worked). The cost: WER <span class="bad">9 → 29%</span>, it traded some <strong>clarity</strong> for the new voice. The classic timbre-vs-intelligibility trade-off.</blockquote>
-  <aside class="notes">[ILYA] These are the real numbers, on 20 held-out clips. The headline is the trade-off. MCD, the distance to the droid reference, drops from 10.5 to 6.2 decibels. That's hard proof the fine-tuning worked: the model's output is now spectrally much closer to the droid voice than the pretrained model was. The cost shows up in intelligibility: word error rate rises from 9 to 29 percent, it's understandable but less clean than the base. Pitch is about the same. So we measurably gained the new voice, at a measurable cost to clarity, and reducing that cost is our main future work.</aside>
+  <blockquote class="fragment small" style="margin-top:10px;"><strong>Reading it:</strong> MCD <span class="good">10.5 → 6.0 dB</span> = the timbre <strong>moved to the droid</strong> (fine-tuning worked). And intelligibility is <strong>close to the ceiling</strong>: our best model is <span class="kpi">14.4%</span> WER vs the <span class="kpi">5.75%</span> of the <em>real</em> B1 recordings, the model can't beat its teacher, but it lands near it.</blockquote>
+  <aside class="notes">[ILYA] These are the real numbers, on the full 655-clip held-out set. Two things. First, the timbre: MCD, the spectral distance to the droid reference, drops from 10.5 to 6.0 decibels, hard proof the fine-tuning worked, the output is now much closer to the droid voice. Second, and this is the key framing: intelligibility against the ceiling. We measured Whisper on the real B1 recordings themselves, and even those score 5.75 percent word error rate, that is the upper bound any model trained on this data can reach. Our best checkpoint, epoch 2, hits 14.4 percent, so it lands close to that ceiling, it can't beat its teacher but it gets near it. Epoch 5 is slightly higher on words but best on timbre, so it is a small trade either way.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Results</span></div>
 </section>
 
@@ -488,7 +560,7 @@ loss weights    mel 45 · kl 1 · adv 1 · fm 1</div>
   <h2>Failure modes &amp; limitations</h2>
   <div class="row" style="align-items:flex-start; gap:30px;">
     <ul class="clean" style="flex:0 0 45%;">
-      <li class="fragment"><strong>Intelligibility cost</strong>: WER up vs base; some <strong>short prompts collapse</strong>.</li>
+      <li class="fragment"><strong>Intelligibility cost</strong>: WER above the ceiling (~14% vs 5.75%); some <strong>short prompts collapse</strong>.</li>
       <li class="fragment"><strong>Timbre ≠ hard robot</strong>: RVC moves a <em>speaker's timbre</em>, not the ring-mod buzz (a separate DSP effect).</li>
       <li class="fragment"><strong>GAN artifacts</strong> early; <strong>over-fitting</strong> past the best epoch.</li>
       <li class="fragment"><strong>Russian accent</strong>: left as <strong>future work</strong>.</li>
@@ -522,7 +594,7 @@ loss weights    mel 45 · kl 1 · adv 1 · fm 1</div>
   <ul class="clean">
     <li class="fragment">We <strong>built &amp; published a droid dataset</strong> (RVC) and <strong>fine-tuned VITS</strong> onto that voice.</li>
     <li class="fragment">We <strong>re-implemented the GAN training</strong> from scratch, discriminator, losses, the loop, on an inference-only model.</li>
-    <li class="fragment">Result: <strong>the timbre moved to the droid</strong> (MCD 10.5→6.2) at a <strong>clarity cost</strong> (WER 9→29), a measured trade-off.</li>
+    <li class="fragment">Result: <strong>the timbre moved to the droid</strong> (MCD 10.5→6.0); intelligibility <strong>~14% WER</strong>, close to the <strong>5.75% ceiling</strong> of the data itself, a measured, bounded trade-off.</li>
     <li class="fragment"><strong>Future:</strong> cut the WER by <strong>freezing the text/timing front-end</strong> (keeps durations stable), + the Russian accent.</li>
   </ul>
   <aside class="notes">[EMIR] To wrap up. We built and published our own droid dataset with RVC, and fine-tuned VITS onto that voice. We re-implemented the whole GAN training stack from scratch, discriminator, losses, the loop, because the library ships inference-only. The result is a clear, measured trade-off: the timbre moved to the droid by MCD, at a cost in intelligibility by WER. And the clear next step to cut that WER is to freeze the text and timing front-end during fine-tuning, which keeps the durations stable, plus finally adding the Russian accent. Thanks, questions?</aside>
