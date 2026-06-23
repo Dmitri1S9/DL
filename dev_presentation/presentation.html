@@ -524,31 +524,18 @@
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
 </section>
 
-<!-- 12 · EVALUATION, ILYA -->
+<!-- 12 · EVALUATION — METRICS + WHY + B1 TWIST, ILYA -->
 <section>
-  <h2>Evaluation: what we measure</h2>
-  <p class="small">All metrics <strong>lower = better</strong>, on a <strong>held-out</strong> set (last 5% of the dataset, unseen in training):</p>
+  <h2>Evaluation: what we measure &amp; why</h2>
+  <p class="small">All metrics <strong>lower = better</strong>:</p>
   <ul class="clean">
-    <li><strong>WER / CER</strong>: <em>intelligibility.</em> Whisper transcribes our audio → compare to the text. <span class="muted">"Can a listener understand it?"</span></li>
-    <li><strong>MCD</strong>: <em>spectral.</em> Distance to the <strong>B1 droid reference</strong>. <span class="muted">"Did it learn the droid timbre?"</span></li>
-    <li><strong>F0 RMSE</strong>: <em>prosody.</em> Pitch distance to the reference.</li>
+    <li><strong>WER / CER</strong> (Whisper): <em>intelligibility</em>, works for any voice, droid included. <span class="muted">"Can a listener understand it?"</span></li>
+    <li><strong>MCD</strong>: <em>spectral</em> closeness to the <strong>B1 droid reference</strong>, the key one here. <span class="muted">"Did it learn the droid timbre?"</span></li>
+    <li><strong>F0 RMSE</strong>: <em>pitch / prosody</em> distance to the reference.</li>
+    <li><strong>The ceiling</strong>: Whisper on the <strong>real B1 recordings</strong> = 5.75% WER → no model trained on this data can score below that.</li>
   </ul>
-  <p class="small">Before/after = one checkpoint swap, same prompts. <span class="muted">(brief asks for WER/CER + one spectral metric, we report both MCD &amp; F0.)</span></p>
-  <aside class="notes">[ILYA] We evaluate on a held-out set, the last 5% of the data the model never trained on. Three metrics, all lower-is-better. WER and CER are intelligibility: we run Whisper, an independent speech recognizer, on our audio and check how well it transcribes back to the text. MCD is spectral, how close our output is to the actual B1 droid reference, i.e. did it learn the timbre. And F0 RMSE is prosody, the pitch difference. The assignment asks for error rates plus at least one spectral metric; we report two. Before and after is just a checkpoint swap on the same prompts.</aside>
-  <div class="footer"><span>Project 13: Text to Speech</span><span>Evaluation</span></div>
-</section>
-
-<!-- 12b · WHY THESE METRICS, ILYA -->
-<section>
-  <h2>Why these metrics, and the B1 twist</h2>
-  <ul class="clean">
-    <li><strong>WER / CER</strong> (Whisper): <em>intelligibility</em>, works for any voice, droid included.</li>
-    <li><strong>MCD</strong>: <em>spectral closeness to the target</em>, the key one here: "did it learn the droid timbre?"</li>
-    <li><strong>F0 RMSE</strong>: <em>pitch / prosody</em> distance.</li>
-    <li><strong>The ceiling</strong>: we also run Whisper on the <strong>real B1 recordings</strong> (5.75% WER) → no model trained on this data can score below that bound.</li>
-  </ul>
-  <blockquote class="small"><strong>The B1 twist:</strong> we score MCD &amp; F0 against the <strong>droid reference</strong>, not the original female LJSpeech, otherwise we'd just be measuring "how un-droid-like" we are. A deliberate voice change only makes sense measured against the <em>new</em> target.</blockquote>
-  <aside class="notes">[ILYA] Why these three. WER and CER from Whisper measure intelligibility, and they work for any voice including the droid. MCD measures spectral closeness to a target voice, and it is the key metric here, it tells us whether we learned the droid timbre. F0 RMSE is pitch. And here is the B1 twist that matters: we compute MCD and F0 against the droid reference from our dataset, not against the original female LJSpeech, because comparing a droid to a female voice would just measure how un-droid-like we are. For a deliberate voice change, the spectral metric only makes sense against the new target.</aside>
+  <blockquote class="small"><strong>The B1 twist:</strong> we score MCD &amp; F0 against the <strong>droid reference</strong>, not the original female LJSpeech, otherwise we'd just be measuring "how un-droid-like" we are. A deliberate voice change only makes sense measured against the <em>new</em> target. <span class="muted">(brief asks WER/CER + one spectral, we report two.)</span></blockquote>
+  <aside class="notes">[ILYA] We use four numbers, all lower-is-better. WER and CER from Whisper are intelligibility, and they work for any voice including the droid. MCD is spectral closeness to the B1 droid reference, the key one, it tells us whether we learned the timbre. F0 RMSE is pitch. And we also measure the ceiling: Whisper on the real B1 recordings scores 5.75 percent, so no model trained on this data can beat that. The B1 twist that matters: we score MCD and F0 against the droid reference, not the original female LJSpeech, because comparing a droid to a female voice would just measure how un-droid-like we are. The assignment asks for error rates plus one spectral metric; we report two.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Evaluation</span></div>
 </section>
 
@@ -626,19 +613,6 @@
   </div>
   <aside class="notes">[ILYA] Honest limitations. First, the intelligibility cost we just saw, and on some short punchy prompts the durations collapse and it comes out garbled, here's one: "Roger roger, all units…" should be five seconds, but it comes out as under a second of mush. (play it) Second, it's not a hard sci-fi robot, RVC transfers a speaker's timbre, not the ring-modulator buzz, so it's a brighter voice rather than mechanical; that buzz would be a separate effect. Third, typical GAN artifacts early on, and quality drops if you train past the best epoch. And the Russian accent was going to be input pre-processing, left as future work.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Limitations</span></div>
-</section>
-
-<!-- 16 · ENGINEERING, EMIR -->
-<section>
-  <h2>Engineering: a team of 3</h2>
-  <ul class="clean">
-    <li><strong>Contract-first.</strong> Data, model and eval talk through small fixed interfaces (a manifest, an <code>EvalResult</code>), not each other's internals.</li>
-    <li>→ <strong>parallel</strong> work, and the model stayed <strong>swappable</strong>.</li>
-    <li><strong>Offline mock + smoke test</strong>: prove the wiring in seconds, no GPU.</li>
-    <li>Reproducible: pinned deps · <code>Makefile</code> · fixed seed · <code>ruff</code> · <code>loguru</code>.</li>
-  </ul>
-  <aside class="notes">[EMIR] A word on how three of us built this without colliding. Contract-first design: the data, the model, and the evaluation only talk through small fixed interfaces, a manifest and an evaluation-result object, never each other's internals. That let us work in parallel and kept the model swappable. We also have an offline mock and a smoke test, so we can check the whole pipeline wires together in seconds without a GPU, plus pinned dependencies, a fixed seed, and lint for reproducibility.</aside>
-  <div class="footer"><span>Project 13: Text to Speech</span><span>Engineering</span></div>
 </section>
 
 <!-- 17 · TAKEAWAYS, EMIR -->
