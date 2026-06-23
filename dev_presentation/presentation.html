@@ -407,34 +407,41 @@
     <li><strong>Then local, RTX 5060 (8 GB).</strong> No disconnects, full control.</li>
     <li><strong>Fitting 8 GB:</strong> batch 1 + <strong>gradient accumulation</strong>, <strong>AMP fp16</strong>, <code>num_workers=0</code> (Windows DataLoader crash).</li>
   </ul>
-  <blockquote class="small"><strong>Budget:</strong> 5 epochs · <span class="kpi">≈ 9.7 GPU-hours</span> for the final clean run (~1.9 h/epoch), plus ~3× more in failed runs &amp; debugging. Config: <code>lr 1e-4 · segment 8192 · grad-clip 10 · disc-warmup 1500</code>.</blockquote>
+  <blockquote class="small">The 8 GB card is the whole reason for batch 1 + accumulation and fp16, full numbers &amp; config on the next slide.</blockquote>
   <aside class="notes">[DIMA] On compute, we started on Colab and it fought us: sessions dropped, the free tier caps around 15 minutes, disk filled with checkpoints. So I moved to my local RTX 5060, 8 gigs. To fit 8 gigs I used batch size 1 with gradient accumulation for a larger effective batch, mixed-precision fp16, and zero dataloader workers because the Windows loader kept crashing. The final clean run was 5 epochs, about 9.7 GPU-hours, roughly 1.9 hours per epoch, and that's on top of maybe three times that in failed runs and debugging.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
 
 <!-- 9b · COST + CONFIG, DIMA -->
 <section>
-  <h2>Training cost &amp; config</h2>
-  <div class="row" style="align-items:flex-start; gap:30px;">
-    <div style="flex:0 0 42%;">
+  <h2>Training setup &amp; cost</h2>
+  <div class="row" style="align-items:flex-start; gap:34px;">
+    <div style="flex:0 0 33%;">
       <table>
-        <tr><th>run</th><th>time</th></tr>
-        <tr><td>each epoch (×5)</td><td>~1.9 h</td></tr>
-        <tr><td><strong>clean run total</strong></td><td><strong>≈ 9.7 GPU-h</strong></td></tr>
-        <tr><td>failed runs + debug</td><td>~3× more</td></tr>
+        <tr><th>epoch</th><th>duration</th></tr>
+        <tr><td>1</td><td>1.89 h</td></tr>
+        <tr><td>2</td><td>1.89 h</td></tr>
+        <tr><td>3</td><td>1.96 h</td></tr>
+        <tr><td>4</td><td>2.02 h</td></tr>
+        <tr><td>5</td><td>1.93 h</td></tr>
+        <tr><td><strong>total</strong></td><td><strong>≈ 9.68 GPU-h</strong></td></tr>
       </table>
       <p class="sub" style="margin-top:6px;">local RTX 5060 (8 GB)</p>
     </div>
     <div style="flex:1;">
-      <div class="pipeline" style="font-size:0.56em; white-space:pre-line;">learning_rate   1e-4   (vs 2e-4 from scratch)
-batch_size      1   + grad accumulation
-segment_size    8192   (decoder crop)
-grad_clip_norm  10
-disc_warmup     1500 steps
-use_amp         True   (fp16)
-loss weights    mel 45 · kl 1 · adv 1 · fm 1</div>
+      <table>
+        <tr><th>parameter</th><th>value</th></tr>
+        <tr><td>learning&#95;rate</td><td>1e-4 &nbsp;<span class="muted">vs 2e-4 from scratch</span></td></tr>
+        <tr><td>batch&#95;size</td><td>1 &nbsp;<span class="muted">+ grad accumulation</span></td></tr>
+        <tr><td>segment&#95;size</td><td>8192 &nbsp;<span class="muted">decoder crop</span></td></tr>
+        <tr><td>grad&#95;clip&#95;norm</td><td>10</td></tr>
+        <tr><td>disc&#95;warmup</td><td>1500 steps</td></tr>
+        <tr><td>use&#95;amp</td><td>True &nbsp;<span class="muted">fp16</span></td></tr>
+        <tr><td>loss weights</td><td>mel 45 · kl 1 · adv 1 · fm 1</td></tr>
+      </table>
     </div>
   </div>
+  <blockquote class="small" style="margin-top:10px;">Plus <strong>~3× more</strong> in failed runs &amp; debugging, and the <strong>RVC baking</strong> of the whole 13,100-clip dataset on top. The 9.68 h is only the final clean pass, the real work was everything before it.</blockquote>
   <aside class="notes">[DIMA] The numbers. The final clean run was 5 epochs, about 1.9 hours each, roughly 9.7 GPU-hours total, plus maybe three times that in failed runs and debugging, all on my local RTX 5060. Key config: learning rate 1e-4, much gentler than the from-scratch 2e-4; batch size 1 with gradient accumulation; a decoder crop of 8192; gradient clip at 10; a discriminator warm-up of 1500 steps; mixed precision; and reconstruction weighted 45.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
