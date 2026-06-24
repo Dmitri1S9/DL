@@ -24,3 +24,11 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+
+# Stray checkpoints in repo root (real ones live in /models/, already ignored)
+*.pt
+
+# macOS / tooling cruft
+.DS_Store
+.pytest_cache/
+.ruff_cache/
