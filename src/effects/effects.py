@@ -65,18 +65,16 @@ RUSSIAN_ACCENT: list[tuple[str, str]] = [
 # Context-dependent rules (final devoicing, NG->NGK) live in phoneme.apply_accent.
 ACCENT_MAP_PHONEME: dict[str, str | None] = {
     # ── Consonants ────────────────────────────────────────────────────────────
-    'DH': 'Z',   # voiced th  "the"    -> "ze"
-    'TH': 'Z',   # voiceless  "think"  -> "zink"
-    'W':  'V',   # "we"       -> "ve",  "would" -> "vud"
+    'DH': 'Z',  # voiced th  "the"    -> "ze"
+    'TH': 'Z',  # voiceless  "think"  -> "zink"
+    'W': 'V',  # "we"       -> "ve",  "would" -> "vud"
     'HH': None,  # drop aspiration:     "have"  -> "av"
-
     # ── Vowels — Russian flattens English diphthongs ──────────────────────────
     'AE': 'EH',  # /æ/ "cat"  -> /ɛ/ "cet"   (no near-open front vowel in Russian)
     'OW': 'AO',  # /oʊ/ "go"  -> /o/ pure     (no glide, Russian O is pure)
     'EY': 'EH',  # /eɪ/ "say" -> /e/ pure     (no glide)
     'AW': 'AO',  # /aʊ/ "how" -> /o/          (collapse to O)
     'OY': 'AO',  # /ɔɪ/ "boy" -> /o/          (collapse)
-
     # ── Unstressed vowel reduction ────────────────────────────────────────────
     # Russian strongly reduces unstressed vowels -> AH (schwa) everywhere
     # (applied only to the already-unstressed AX; full AH we keep)
@@ -208,7 +206,9 @@ def apply_b1_droid(audio: np.ndarray) -> np.ndarray:
     y = x * carrier
 
     # 2. Pitch shift +3 semitones
-    y = librosa.effects.pitch_shift(y.astype(np.float32), sr=SAMPLE_RATE, n_steps=3).astype(np.float64)
+    y = librosa.effects.pitch_shift(
+        y.astype(np.float32), sr=SAMPLE_RATE, n_steps=3
+    ).astype(np.float64)
 
     # 3. Bandpass 250-6000 Hz
     sos_band = butter(4, [250, 6000], btype='band', fs=SAMPLE_RATE, output='sos')

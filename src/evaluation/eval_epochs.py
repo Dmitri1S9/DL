@@ -23,13 +23,13 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import os
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 
 from core import config
+from core.espeak import setup_espeak
 from core.logger import logger
 
 MODEL_REPO = 'Dmi1tr13/vits-b1-droid'
@@ -38,20 +38,6 @@ DATASET_REPO = 'Dmi1tr13/ljspeech-b1'
 LAST_SHARD = 'data/train-00007-of-00008.parquet'
 EPOCHS = (0, 1, 2, 3, 4, 5)
 SR = 22050
-
-
-def _ensure_espeak() -> None:
-    """phonemizer needs the espeak-ng *library*; point it at the dylib if unset."""
-    if os.environ.get('PHONEMIZER_ESPEAK_LIBRARY'):
-        return
-    for cand in (
-        '/opt/homebrew/lib/libespeak-ng.dylib',  # macOS arm64 (brew)
-        '/usr/local/lib/libespeak-ng.dylib',  # macOS intel (brew)
-        '/usr/lib/x86_64-linux-gnu/libespeak-ng.so.1',  # debian/ubuntu
-    ):
-        if Path(cand).exists():
-            os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = cand
-            return
 
 
 def _load_heldout(n: int) -> tuple[list[str], list[np.ndarray]]:
@@ -63,7 +49,9 @@ def _load_heldout(n: int) -> tuple[list[str], list[np.ndarray]]:
     if not path.exists():
         path = Path(
             hf_hub_download(
-                DATASET_REPO, LAST_SHARD, repo_type='dataset',
+                DATASET_REPO,
+                LAST_SHARD,
+                repo_type='dataset',
                 local_dir=str(config.DATA_DIR / 'b1_shards'),
             )
         )
@@ -87,7 +75,9 @@ def _build_model(checkpoint: Path):
     from vits_finetune.model_config import VitsModelConfig
 
     mc = VitsModelConfig()
-    tokenizer = AutoTokenizer.from_pretrained(mc.pretrained_model_name, cache_dir=str(mc.cache_dir))
+    tokenizer = AutoTokenizer.from_pretrained(
+        mc.pretrained_model_name, cache_dir=str(mc.cache_dir)
+    )
     model = VitsFinetuneModel(mc)
     load_checkpoint(checkpoint, model, map_location='cpu')
     model.eval()
@@ -96,11 +86,11 @@ def _build_model(checkpoint: Path):
 
 def evaluate_epochs(n: int = 20, epochs=EPOCHS, out: Path | None = None) -> list[dict]:
     """Synthesize + score the held-out set with every epoch checkpoint."""
-    _ensure_espeak()
-    import whisper
+    setup_espeak()
     from huggingface_hub import hf_hub_download
     from jiwer import cer, wer
 
+    from evaluation.asr import transcribe
     from evaluation.metrics import compute_mcd
 
     texts, real_audio = _load_heldout(n)
@@ -116,12 +106,15 @@ def evaluate_epochs(n: int = 20, epochs=EPOCHS, out: Path | None = None) -> list
         ref_paths.append(str(rp))
 
     logger.info('Loading Whisper (base)...')
-    asr = whisper.load_model('base')
 
     results: list[dict] = []
     for ep in epochs:
         ckpt = Path(
-            hf_hub_download(MODEL_REPO, f'epoch_{ep}_G.pt', local_dir=str(config.MODELS_DIR / 'vits_finetune'))
+            hf_hub_download(
+                MODEL_REPO,
+                f'epoch_{ep}_G.pt',
+                local_dir=str(config.MODELS_DIR / 'vits_finetune'),
+            )
         )
         logger.info(f'=== epoch {ep}: loading {ckpt.name} ===')
         model, tokenizer, torch = _build_model(ckpt)
@@ -131,10 +124,14 @@ def evaluate_epochs(n: int = 20, epochs=EPOCHS, out: Path | None = None) -> list
         hyps, refs, mcds = [], [], []
         for i, text in enumerate(texts):
             inp = tokenizer(text, return_tensors='pt')
-            torch.manual_seed(1234)  # pin the stochastic duration/noise for reproducibility
+            torch.manual_seed(
+                1234
+            )  # pin the stochastic duration/noise for reproducibility
             with torch.no_grad():
                 wav = (
-                    model.vits(input_ids=inp.input_ids, attention_mask=inp.attention_mask)
+                    model.vits(
+                        input_ids=inp.input_ids, attention_mask=inp.attention_mask
+                    )
                     .waveform.squeeze(0)
                     .cpu()
                     .numpy()
@@ -142,7 +139,7 @@ def evaluate_epochs(n: int = 20, epochs=EPOCHS, out: Path | None = None) -> list
                 )
             gp = gen_dir / f'{i:03d}.wav'
             sf.write(str(gp), wav, SR)
-            hyps.append(asr.transcribe(str(gp), language='en', fp16=False)['text'].strip().lower())
+            hyps.append(transcribe(str(gp)))
             refs.append(text.lower())
             try:
                 mcds.append(compute_mcd(ref_paths[i], str(gp)))
@@ -160,8 +157,8 @@ def evaluate_epochs(n: int = 20, epochs=EPOCHS, out: Path | None = None) -> list
         }
         results.append(row)
         logger.success(
-            f"epoch {ep}: WER {row['wer'] * 100:.1f}%  CER {row['cer'] * 100:.1f}%  "
-            f"MCD {row['mcd']:.3f} dB"
+            f'epoch {ep}: WER {row["wer"] * 100:.1f}%  CER {row["cer"] * 100:.1f}%  '
+            f'MCD {row["mcd"]:.3f} dB'
         )
 
     # summary table
@@ -181,10 +178,16 @@ def evaluate_epochs(n: int = 20, epochs=EPOCHS, out: Path | None = None) -> list
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description='Per-epoch WER/CER/MCD for the B1 fine-tune.')
-    parser.add_argument('--n', type=int, default=20, help='Held-out clips to synthesize per epoch.')
+    parser = argparse.ArgumentParser(
+        description='Per-epoch WER/CER/MCD for the B1 fine-tune.'
+    )
+    parser.add_argument(
+        '--n', type=int, default=20, help='Held-out clips to synthesize per epoch.'
+    )
     parser.add_argument('--epochs', type=int, nargs='+', default=list(EPOCHS))
-    parser.add_argument('--out', type=Path, default=config.ROOT / 'logs' / 'eval_epochs.json')
+    parser.add_argument(
+        '--out', type=Path, default=config.ROOT / 'logs' / 'eval_epochs.json'
+    )
     args = parser.parse_args()
     evaluate_epochs(args.n, tuple(args.epochs), args.out)
 

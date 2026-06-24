@@ -32,13 +32,17 @@ class TrainingConfig:
     batch_size: int = 1
     learning_rate: float = 1e-4  # lower than the from-scratch 2e-4 for fine-tuning
     num_epochs: int = 5
-    segment_size: int = 8192 # waveform crop length (samples) fed to the decoder
+    segment_size: int = 8192  # waveform crop length (samples) fed to the decoder
     num_workers: int = 0
     seed: int = 1234
     grad_accum_steps: int = 1  # effective batch = batch_size * grad_accum_steps
-    grad_clip_norm: float = 10.0  # global grad-norm cap (1000 let GAN spikes wreck the pretrained weights)
+    grad_clip_norm: float = (
+        10.0  # global grad-norm cap (1000 let GAN spikes wreck the pretrained weights)
+    )
     disc_warmup_steps: int = 1500  # train D alone this many steps before adv/fm reach G
-    use_amp: bool = True  # fp16 mixed precision (CUDA only); halves memory -> larger physical batch
+    use_amp: bool = (
+        True  # fp16 mixed precision (CUDA only); halves memory -> larger physical batch
+    )
 
     # --- loss weights ---
     mel_loss_weight: float = 45.0
@@ -68,8 +72,6 @@ class TrainingConfig:
         return self.n_fft // 2 + 1
 
 
-
-
 @dataclass
 class DiscriminatorConfig:
     # --- fun mpd ---
@@ -80,9 +82,7 @@ class DiscriminatorConfig:
     batch_size: int = TrainingConfig.batch_size
     segment_size: int = TrainingConfig.segment_size
 
-
     msd_channels: tuple = (1, 16, 64, 256, 1024, 1024)
     msd_kernels: tuple = (15, 41, 41, 41, 5)
     msd_strides: tuple = (1, 4, 4, 4, 1)
     msd_scales: int = 3
-

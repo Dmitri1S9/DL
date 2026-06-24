@@ -1,5 +1,4 @@
-"""Inference: text -> waveform, for sanity-checking a fine-tuned checkpoint.
-"""
+"""Inference: text -> waveform, for sanity-checking a fine-tuned checkpoint."""
 
 from __future__ import annotations
 
@@ -8,7 +7,6 @@ import logging
 from pathlib import Path
 
 import torch
-import torchaudio
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from vits_finetune.checkpoint import load_checkpoint
@@ -45,15 +43,17 @@ def synthesize(
     Returns:
         1-D float tensor of audio samples at ``model_config.sampling_rate``.
     """
-    inputs = tokenizer(text, return_tensors="pt").to(device)
+    inputs = tokenizer(text, return_tensors='pt').to(device)
     with torch.no_grad():
         output = model.vits(input_ids=inputs.input_ids)
-    waveform = output.waveform.squeeze(0).cpu()    # (1, T) -> (T,)
+    waveform = output.waveform.squeeze(0).cpu()  # (1, T) -> (T,)
     return waveform
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+    logging.basicConfig(
+        level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s'
+    )
 
     parser = argparse.ArgumentParser(
         description='Synthesize speech from text using a (fine-tuned) VITS checkpoint.'
@@ -65,13 +65,17 @@ def main() -> None:
         help='Fine-tuned checkpoint .pt file (omit to use the pretrained base model).',
     )
     parser.add_argument('--text', required=True, help='Text to synthesize.')
-    parser.add_argument('--out', type=Path, default=Path('synthesized.wav'), help='Output .wav path.')
+    parser.add_argument(
+        '--out', type=Path, default=Path('synthesized.wav'), help='Output .wav path.'
+    )
     parser.add_argument(
         '--device', default=None, help='"cuda" or "cpu" (default: auto-detect).'
     )
     args = parser.parse_args()
 
-    device = torch.device(args.device or ('cuda' if torch.cuda.is_available() else 'cpu'))
+    device = torch.device(
+        args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
+    )
     model_config = VitsModelConfig()
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -83,6 +87,7 @@ def main() -> None:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     import soundfile as sf
+
     sf.write(str(args.out), waveform.numpy(), model_config.sampling_rate)
     logger.info(f'Wrote {args.out}')
 

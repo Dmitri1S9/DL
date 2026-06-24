@@ -9,39 +9,28 @@ These are the primitives; the manifest-driven runner lives in evaluation.evaluat
 """
 
 from core.logger import logger
+from evaluation.asr import transcribe
 
 
-def _transcribe(audio_paths: list[str]) -> list[str]:
-    """Transcribe each wav with Whisper (lazy import — heavy dependency)."""
-    import whisper
+def compute_wer_cer(
+    audio_paths: list[str], reference_texts: list[str]
+) -> tuple[float, float]:
+    """WER and CER from a single Whisper pass over ``audio_paths``.
 
-    model = whisper.load_model('base')
-    return [
-        model.transcribe(path, language='en')['text'].strip().lower()
-        for path in audio_paths
-    ]
+    Each clip is transcribed once and scored for both metrics against
+    ``reference_texts`` (lower = better). Returns ``(wer, cer)``.
+    """
+    from jiwer import cer, wer
 
-
-def compute_wer(audio_paths: list[str], reference_texts: list[str]) -> float:
-    """Word Error Rate between Whisper transcripts and the reference texts."""
-    from jiwer import wer
-
-    hypotheses = _transcribe(audio_paths)
-    references = [t.lower() for t in reference_texts]
-    score = wer(references, hypotheses)
-    logger.info(f'WER: {score:.4f} ({score * 100:.1f}%)')
-    return score
-
-
-def compute_cer(audio_paths: list[str], reference_texts: list[str]) -> float:
-    """Character Error Rate between Whisper transcripts and the reference texts."""
-    from jiwer import cer
-
-    hypotheses = _transcribe(audio_paths)
-    references = [t.lower() for t in reference_texts]
-    score = cer(references, hypotheses)
-    logger.info(f'CER: {score:.4f} ({score * 100:.1f}%)')
-    return score
+    hypotheses = [transcribe(path) for path in audio_paths]
+    references = [text.lower() for text in reference_texts]
+    word_error = float(wer(references, hypotheses))
+    char_error = float(cer(references, hypotheses))
+    logger.info(
+        f'WER: {word_error:.4f} ({word_error * 100:.1f}%)  '
+        f'CER: {char_error:.4f} ({char_error * 100:.1f}%)'
+    )
+    return word_error, char_error
 
 
 def compute_mcd(ref_path: str, gen_path: str) -> float:

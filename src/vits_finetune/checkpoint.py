@@ -1,5 +1,4 @@
-"""Checkpoint save/load for VITS fine-tuning.
-"""
+"""Checkpoint save/load for VITS fine-tuning."""
 
 from __future__ import annotations
 
@@ -17,8 +16,7 @@ def save_checkpoint(
     epoch: int = 0,
     extra: dict[str, Any] | None = None,
 ) -> None:
-    """Save model/optimizer state plus training progress to ``path``.
-    """
+    """Save model/optimizer state plus training progress to ``path``."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload: dict[str, Any] = {
@@ -38,8 +36,7 @@ def load_checkpoint(
     optimizer: torch.optim.Optimizer | None = None,
     map_location: str | torch.device | None = None,
 ) -> dict[str, Any]:
-    """Load a checkpoint written by ``save_checkpoint`` into ``model`` (and ``optimizer``).
-    """
+    """Load a checkpoint written by ``save_checkpoint`` into ``model`` (and ``optimizer``)."""
     path = Path(path)
     checkpoint = torch.load(path, map_location=map_location)
     model.load_state_dict(checkpoint['model'])

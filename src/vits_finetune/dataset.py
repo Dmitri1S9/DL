@@ -1,5 +1,4 @@
-"""Dataset for VITS fine-tuning.    
-"""
+"""Dataset for VITS fine-tuning."""
 
 from __future__ import annotations
 
@@ -42,8 +41,7 @@ class VitsFinetuneDataset(Dataset):
         self.input_ids = self._tokenize_all(split)
 
     def _tokenize_all(self, split: str) -> list[torch.Tensor]:
-        """Tokenize all texts once, caching the result to disk.
-        """
+        """Tokenize all texts once, caching the result to disk."""
         key = hashlib.md5(
             f'{self.training_config.dataset_repo_id}|{split}|'
             f'{self.tokenizer.name_or_path}'.encode()
@@ -107,17 +105,21 @@ class VitsFinetuneDataset(Dataset):
             Unpadded — ``collate.collate_fn`` pads these into a batch.
         """
         if index >= len(self.dataset):
-            raise IndexError(f"Index {index} out of range for dataset of size {len(self.dataset)}")
-        
+            raise IndexError(
+                f'Index {index} out of range for dataset of size {len(self.dataset)}'
+            )
+
         example = self.dataset[index]
         input_ids = self.input_ids[index]
-        audio_array = torch.from_numpy(example["audio"]["array"]).float() 
-        linear_spectrogram = wav_to_linear_spectrogram(audio_array, self.training_config)
+        audio_array = torch.from_numpy(example['audio']['array']).float()
+        linear_spectrogram = wav_to_linear_spectrogram(
+            audio_array, self.training_config
+        )
         mel_spectrogram = wav_to_mel_spectrogram(audio_array, self.training_config)
 
         return {
-            "input_ids": input_ids,
-            "waveform": audio_array,
-            "linear_spec": linear_spectrogram,        
-            "mel_spec": mel_spectrogram,
-        }  
+            'input_ids': input_ids,
+            'waveform': audio_array,
+            'linear_spec': linear_spectrogram,
+            'mel_spec': mel_spectrogram,
+        }

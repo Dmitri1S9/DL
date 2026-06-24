@@ -2,12 +2,14 @@
 
 Usage: PYTHONPATH=src .venv/Scripts/python.exe scripts/plot_train_log.py
 """
+
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
@@ -42,7 +44,9 @@ STEP_RE = re.compile(r'Step (\d+)')
 
 
 def parse_log() -> dict[str, tuple[list[int], list[float]]]:
-    series: dict[str, tuple[list[int], list[float]]] = {name: ([], []) for name in PATTERNS}
+    series: dict[str, tuple[list[int], list[float]]] = {
+        name: ([], []) for name in PATTERNS
+    }
     last_step = None
     for line in LOG_PATH.read_text(encoding='utf-8').splitlines():
         m = STEP_RE.search(line)
@@ -67,7 +71,12 @@ def plot_metric(name: str, steps: list[int], values: list[float]) -> None:
     # expanding mean for the first `window` points so the trend line covers
     # the full range starting at step 0, instead of only starting once a
     # full window of data is available.
-    trend = np.array([values_arr[max(0, i - window + 1):i + 1].mean() for i in range(len(values_arr))])
+    trend = np.array(
+        [
+            values_arr[max(0, i - window + 1) : i + 1].mean()
+            for i in range(len(values_arr))
+        ]
+    )
     trend_steps = steps_arr
 
     # expected trend: linear fit on the rolling mean, extrapolated 20% past the data
@@ -79,10 +88,29 @@ def plot_metric(name: str, steps: list[int], values: list[float]) -> None:
     full_name = FULL_NAMES[name]
 
     plt.figure(figsize=(10, 5))
-    plt.plot(steps_arr, values_arr, linewidth=0.5, alpha=0.4, color='tab:blue', label=full_name)
-    plt.plot(trend_steps, trend, linewidth=2, color='tab:red', label=f'rolling mean (window={window})')
-    plt.plot(fit_steps, fit_values, linewidth=1.5, color='black', linestyle='--',
-              label=f'expected trend (slope={coeffs[0]:.2e}/step)')
+    plt.plot(
+        steps_arr,
+        values_arr,
+        linewidth=0.5,
+        alpha=0.4,
+        color='tab:blue',
+        label=full_name,
+    )
+    plt.plot(
+        trend_steps,
+        trend,
+        linewidth=2,
+        color='tab:red',
+        label=f'rolling mean (window={window})',
+    )
+    plt.plot(
+        fit_steps,
+        fit_values,
+        linewidth=1.5,
+        color='black',
+        linestyle='--',
+        label=f'expected trend (slope={coeffs[0]:.2e}/step)',
+    )
     plt.axvline(steps_arr[-1], color='gray', linewidth=0.8, linestyle=':')
     plt.xlabel('training step')
     plt.ylabel(full_name)

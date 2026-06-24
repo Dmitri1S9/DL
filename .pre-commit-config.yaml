@@ -1,0 +1,10 @@
+# Keeps every commit consistent with the project's ruff config (pyproject.toml).
+# Enable once with:  pre-commit install   (pip install pre-commit first)
+# Then ruff format + lint run automatically on the files you commit.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15  # keep in sync with requirements-dev.txt
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format

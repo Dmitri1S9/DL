@@ -11,9 +11,9 @@ Output: ~/Downloads/Project13_presentation.pptx
 from __future__ import annotations
 
 import re
+import tempfile
 from pathlib import Path
 
-from PIL import Image
 from playwright.sync_api import sync_playwright
 from pptx import Presentation
 from pptx.util import Inches
@@ -22,6 +22,8 @@ HERE = Path(__file__).resolve().parent
 STANDALONE = HERE / 'presentation_standalone.html'
 SRC = HERE / 'presentation.html'
 OUT = Path.home() / 'Downloads' / 'Project13_presentation.pptx'
+
+
 def _find_chrome() -> str | None:
     """Locate a Playwright headless-shell binary in the current user's cache.
 
@@ -29,13 +31,20 @@ def _find_chrome() -> str | None:
     across machines instead of relying on one hard-coded absolute path.
     """
     base = Path.home() / 'Library' / 'Caches' / 'ms-playwright'
-    hits = sorted(base.glob('chromium_headless_shell-*/chrome-headless-shell-*/chrome-headless-shell'))
+    hits = sorted(
+        base.glob(
+            'chromium_headless_shell-*/chrome-headless-shell-*/chrome-headless-shell'
+        )
+    )
     return str(hits[-1]) if hits else None
 
 
 CHROME = _find_chrome()
-TMP = Path('/tmp/pptx_shots')
-DEMO_AUDIO = [HERE / 'assets/audio/demo_base.wav', HERE / 'assets/audio/demo_finetuned.wav']
+TMP = Path(tempfile.mkdtemp(prefix='pptx_shots_'))
+DEMO_AUDIO = [
+    HERE / 'assets/audio/demo_base.wav',
+    HERE / 'assets/audio/demo_finetuned.wav',
+]
 
 
 def notes_per_slide() -> list[str]:
@@ -82,15 +91,26 @@ def main() -> None:
 
     # which rendered slide is the Demo (to embed audio)?
     html = SRC.read_text(encoding='utf-8')
-    titles = [re.sub(r'<[^>]+>', '', (re.search(r'<h[12][^>]*>(.*?)</h[12]>', s, re.S) or re.match('','')).group(1)).strip()
-              if re.search(r'<h[12][^>]*>(.*?)</h[12]>', s, re.S) else ''
-              for s in re.findall(r'<section\b.*?</section>', html, re.S)]
+    titles = [
+        re.sub(
+            r'<[^>]+>',
+            '',
+            (
+                re.search(r'<h[12][^>]*>(.*?)</h[12]>', s, re.S) or re.match('', '')
+            ).group(1),
+        ).strip()
+        if re.search(r'<h[12][^>]*>(.*?)</h[12]>', s, re.S)
+        else ''
+        for s in re.findall(r'<section\b.*?</section>', html, re.S)
+    ]
     demo_idx = next((i for i, t in enumerate(titles) if t == 'Demo'), None)
 
     audio_embedded = 0
     for i, img in enumerate(shots):
         slide = prs.slides.add_slide(blank)
-        slide.shapes.add_picture(str(img), 0, 0, width=prs.slide_width, height=prs.slide_height)
+        slide.shapes.add_picture(
+            str(img), 0, 0, width=prs.slide_width, height=prs.slide_height
+        )
         if notes[i] if i < len(notes) else '':
             slide.notes_slide.notes_text_frame.text = notes[i]
         if i == demo_idx:
@@ -99,7 +119,11 @@ def main() -> None:
                     continue
                 try:
                     slide.shapes.add_movie(
-                        str(wav), Inches(0.6), Inches(2.0 + k * 1.3), Inches(1.0), Inches(1.0),
+                        str(wav),
+                        Inches(0.6),
+                        Inches(2.0 + k * 1.3),
+                        Inches(1.0),
+                        Inches(1.0),
                         mime_type='audio/x-wav',
                     )
                     audio_embedded += 1
@@ -109,7 +133,9 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(OUT))
     mb = OUT.stat().st_size / 1e6
-    print(f'Wrote {OUT} ({mb:.1f} MB) — {len(shots)} slides, audio clips embedded: {audio_embedded}')
+    print(
+        f'Wrote {OUT} ({mb:.1f} MB) — {len(shots)} slides, audio clips embedded: {audio_embedded}'
+    )
 
 
 if __name__ == '__main__':

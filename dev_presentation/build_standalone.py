@@ -3,7 +3,7 @@
 Inlines reveal.css / theme / plugins and the reveal.js + notes JS, and
 base64-embeds every referenced image and audio clip. The result,
 presentation_standalone.html, can be sent as a single file — no assets/ or
-reveal/ folder needed (fixes the recurring "картинки надо докидывать" problem).
+reveal/ folder needed (fixes the recurring "you must ship the images too" problem).
 
 Run:  python build_standalone.py
 """

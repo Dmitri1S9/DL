@@ -20,16 +20,12 @@ import numpy as np
 import soundfile as sf
 
 from core import config
-
-# espeak-ng DLL required by phonemizer (VITS tokenizer) on Windows
-_ESPEAK_DLL = r'C:\Program Files\eSpeak NG\libespeak-ng.dll'
-try:
-    from phonemizer.backend.espeak.espeak import EspeakBackend
-    EspeakBackend.set_library(_ESPEAK_DLL)
-except Exception:
-    pass
 from core.contracts import read_manifest
+from core.espeak import setup_espeak
 from core.logger import logger
+
+# phonemizer (the VITS tokenizer backend) needs the espeak-ng library.
+setup_espeak()
 
 VITS_SAMPLE_RATE = 22050
 
@@ -43,7 +39,9 @@ class TTSModel:
 
         self._torch = torch
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        source = config.TTS_MODEL_ID if checkpoint == config.PRETRAINED else str(checkpoint)
+        source = (
+            config.TTS_MODEL_ID if checkpoint == config.PRETRAINED else str(checkpoint)
+        )
         logger.info(f'Loading VITS from {source!r} on {self.device}...')
 
         self.tokenizer = AutoTokenizer.from_pretrained(

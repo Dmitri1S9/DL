@@ -16,10 +16,14 @@ from vits_finetune.model_config import VitsModelConfig
 
 def _sequence_mask(lengths: torch.Tensor, max_length: int) -> torch.Tensor:
     """``(B,)`` lengths -> ``(B, max_length)`` bool mask, True where index < length."""
-    return torch.arange(max_length, device=lengths.device).unsqueeze(0) < lengths.unsqueeze(1)
+    return torch.arange(max_length, device=lengths.device).unsqueeze(
+        0
+    ) < lengths.unsqueeze(1)
 
 
-def _slice_segments(x: torch.Tensor, starts: torch.Tensor, segment_size: int) -> torch.Tensor:
+def _slice_segments(
+    x: torch.Tensor, starts: torch.Tensor, segment_size: int
+) -> torch.Tensor:
     """Crop a length-``segment_size`` window from each example of ``x`` (B, C, T)."""
     out = x.new_zeros((x.shape[0], x.shape[1], segment_size))
     for i in range(x.shape[0]):
@@ -54,19 +58,23 @@ class VitsFinetuneModel(nn.Module):
             cache_dir=str(model_config.cache_dir),
         )
 
-    text_mask = lambda self, batch: _sequence_mask(batch['input_lengths'],
-                                            batch['input_ids'].shape[1])
-
-    text_encoder = lambda self, text_mask, batch: self.vits.text_encoder(
-            batch['input_ids'],
-            text_mask.unsqueeze(-1).float(),
-            attention_mask=text_mask.float(),
+    text_mask = lambda self, batch: _sequence_mask(
+        batch['input_lengths'], batch['input_ids'].shape[1]
     )
 
-    spec_mask = lambda self, batch: _sequence_mask(
-            batch['spec_lengths'], batch['linear_spec'].shape[2]).unsqueeze(1).float()
+    text_encoder = lambda self, text_mask, batch: self.vits.text_encoder(
+        batch['input_ids'],
+        text_mask.unsqueeze(-1).float(),
+        attention_mask=text_mask.float(),
+    )
 
-    audio_encoder = lambda self, batch, spec_mask: self.vits.posterior_encoder( 
+    spec_mask = lambda self, batch: (
+        _sequence_mask(batch['spec_lengths'], batch['linear_spec'].shape[2])
+        .unsqueeze(1)
+        .float()
+    )
+
+    audio_encoder = lambda self, batch, spec_mask: self.vits.posterior_encoder(
         batch['linear_spec'],
         spec_mask,
     )
@@ -81,7 +89,7 @@ class VitsFinetuneModel(nn.Module):
         text_out = self.text_encoder(text_mask, batch)
         prior_mean = text_out.prior_means.transpose(1, 2)
         prior_log_stddev = text_out.prior_log_variances.transpose(1, 2)
-        last_hidden_state = text_out.last_hidden_state 
+        last_hidden_state = text_out.last_hidden_state
 
         spec_mask = self.spec_mask(batch)
         z, posterior_mean, posterior_log_stddev = self.audio_encoder(batch, spec_mask)
@@ -92,13 +100,12 @@ class VitsFinetuneModel(nn.Module):
         # force fp32 so AMP can't overflow neg_cent and corrupt the MAS path.
         with torch.autocast(device_type=z_p.device.type, enabled=False):
             # (B, T_text, T_frames)
-            neg_cent = neg_cross_entropy(z_p.float(), prior_mean.float(),
-                                         prior_log_stddev.float())
+            neg_cent = neg_cross_entropy(
+                z_p.float(), prior_mean.float(), prior_log_stddev.float()
+            )
 
             # (B, T_text, T_frames)
-            mas_mask = (
-                text_mask.unsqueeze(2) & spec_mask.bool()
-            ).float()
+            mas_mask = (text_mask.unsqueeze(2) & spec_mask.bool()).float()
             # MAS algorithm result
             attn = maximum_path(neg_cent, mas_mask)
 
@@ -106,17 +113,24 @@ class VitsFinetuneModel(nn.Module):
         prior_log_stddev = torch.matmul(prior_log_stddev, attn)
         durations = attn.sum(dim=2).unsqueeze(1)  # (B, T_text)
 
-        duration_loss = self.duration_predictor(
-            last_hidden_state.transpose(1,2),
-            text_mask.unsqueeze(1).float(),
-            durations=durations,
-            reverse=False
-        ).sum() / text_mask.sum()
+        duration_loss = (
+            self.duration_predictor(
+                last_hidden_state.transpose(1, 2),
+                text_mask.unsqueeze(1).float(),
+                durations=durations,
+                reverse=False,
+            ).sum()
+            / text_mask.sum()
+        )
 
-        segment_frames = self.training_config.segment_size // self.training_config.hop_length
+        segment_frames = (
+            self.training_config.segment_size // self.training_config.hop_length
+        )
         segment_frames = min(segment_frames, int(batch['spec_lengths'].min().item()))
 
-        z_segment, starts = _rand_slice_segments(z, batch['spec_lengths'], segment_frames)
+        z_segment, starts = _rand_slice_segments(
+            z, batch['spec_lengths'], segment_frames
+        )
         target_mel = _slice_segments(batch['mel_spec'], starts, segment_frames)
 
         hop = self.training_config.hop_length

@@ -17,7 +17,7 @@ from core import config
 from core.contracts import read_manifest
 from core.dto import EvalResult
 from core.logger import logger
-from evaluation.metrics import compute_cer, compute_mcd, compute_wer
+from evaluation.metrics import compute_mcd, compute_wer_cer
 
 
 def _mean_mcd(scores: list[float]) -> float | None:
@@ -52,11 +52,14 @@ def evaluate(
             logger.warning(f'MCD failed for {item.id}: {exc}')
             mcd_scores.append(float('nan'))
 
+    word_error, char_error = (
+        compute_wer_cer(gen_paths, texts) if compute_asr else (None, None)
+    )
     result = EvalResult(
         label=label,
         n=len(gen_paths),
-        wer=compute_wer(gen_paths, texts) if compute_asr else None,
-        cer=compute_cer(gen_paths, texts) if compute_asr else None,
+        wer=word_error,
+        cer=char_error,
         mcd=_mean_mcd(mcd_scores),
     )
     logger.success(f'[{label}] scored {result.n} clips: {result.model_dump()}')
