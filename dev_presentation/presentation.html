@@ -96,7 +96,7 @@
   <h3 style="color:#dbe6f5;">Fine-tuning <strong style="color:#9ec5ff;">VITS</strong> into a custom voice</h3>
   <p class="who" style="color:#fff; margin-top:1.2em;">Dima&nbsp;·&nbsp;Emir&nbsp;·&nbsp;Ilya</p>
   <p class="sub">TU Wien</p>
-  <aside class="notes">[EMIR] Hi, we're Dima, Emir and Ilya, Project 13, Text to Speech. We took a pretrained speech model and taught it a brand-new custom voice. Let me start with what we were actually trying to do.</aside>
+  <aside class="notes">[EMIR] Hi, we're Dima, Emir and Ilya, Project 13, Text to Speech. We took a pretrained speech model and taught it a brand-new custom voice. Let's start with what we were actually trying to do.</aside>
 </section>
 
 <!-- 2 · GOAL, EMIR -->
@@ -119,7 +119,7 @@
 <!-- 2a · ARCHITECTURE, EMIR -->
 <section>
   <h2>Project architecture: built to move fast</h2>
-  <p class="small">Three of us on one model, so I scaffolded the repo <strong>contract-first</strong>: each part talks only through small fixed interfaces, never each other's internals.</p>
+  <p class="small">Three of us on one model, so we scaffolded the repo <strong>contract-first</strong>: each part talks only through small fixed interfaces, never each other's internals.</p>
   <div style="text-align:center; margin:6px 0 4px;">
   <svg viewBox="0 0 960 250" style="width:96%; max-height:212px;" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
     <defs><marker id="aha" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto"><path d="M0,0 L7.5,3 L0,6 Z" fill="#1a5fb4"/></marker></defs>
@@ -154,7 +154,7 @@
     <li>→ <strong>swap the model without touching eval</strong>, and all three of us build in <strong>parallel</strong>.</li>
     <li><strong>Offline mocks + smoke test</strong>: the whole pipeline wires up in seconds, no GPU. Plus pinned deps · fixed seed · <code>ruff</code> · <code>loguru</code> for reproducibility.</li>
   </ul>
-  <aside class="notes">[EMIR] Before the model itself, a word on how the project is built, because three of us worked on one codebase. I scaffolded it contract-first: data, model and evaluation are separate packages that only talk through small fixed interfaces in core, a manifest and a pydantic result object, never each other's internals. That meant the model stayed swappable and we could all build in parallel without stepping on each other. A single Makefile runs the whole pipeline, the same commands locally and on Colab. And there's an offline mock plus a smoke test, so the entire thing wires up in seconds with no GPU, on top of pinned dependencies, a fixed seed, and lint, so runs are reproducible. With that skeleton in place, Dima will take you through the model.</aside>
+  <aside class="notes">[EMIR] Before the model itself, a word on how the project is built, because three of us worked on one codebase. We scaffolded it contract-first: data, model and evaluation are separate packages that only talk through small fixed interfaces in core, a manifest and a pydantic result object, never each other's internals. That meant the model stayed swappable and we could all build in parallel without stepping on each other. A single Makefile runs the whole pipeline, the same commands locally and on Colab. And there's an offline mock plus a smoke test, so the entire thing wires up in seconds with no GPU, on top of pinned dependencies, a fixed seed, and lint, so runs are reproducible. With that skeleton in place, Dima will take you through the model.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Architecture</span></div>
 </section>
 
@@ -167,23 +167,23 @@
     <tr><td><strong>Post-process</strong></td><td>filter the output audio after the model</td><td>sounds unnatural</td></tr>
     <tr><td><strong>Bake into the model</strong></td><td><strong>fine-tune</strong> on data in the target voice</td><td><span class="good">the real path ✓</span></td></tr>
   </table>
-  <p style="margin-top:0.8em;">Pre-processing is where I wanted the <strong>accent</strong>; I tried <strong>post-processing</strong> for the droid and it sounded unnatural, so I <strong>bake the droid voice into the model</strong>: it produces the voice <em>natively</em> from text, not as an after-effect.</p>
-  <aside class="notes">[DIMA] There are three ways to change the voice. I can pre-process the input, useful for an accent, but limited. I can post-process the output audio, I tried that and it sounds robotic and fake. Or I bake the voice into the model itself by fine-tuning on data in that voice, that's the real, proper way, and that's what I did. The droid becomes the model's own voice.</aside>
+  <p style="margin-top:0.8em;">Pre-processing is where we wanted the <strong>accent</strong>; we tried <strong>post-processing</strong> for the droid and it sounded unnatural, so we <strong>bake the droid voice into the model</strong>: it produces the voice <em>natively</em> from text, not as an after-effect.</p>
+  <aside class="notes">[DIMA] There are three ways to change the voice. We can pre-process the input, useful for an accent, but limited. We can post-process the output audio, we tried that and it sounds robotic and fake. Or we bake the voice into the model itself by fine-tuning on data in that voice, that's the real, proper way, and that's what we did. The droid becomes the model's own voice.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
 </section>
 
 <!-- 2b · IDEAS, DIMA -->
 <section>
   <h2>Where to start: the ideas</h2>
-  <p class="small">Running a pretrained TTS isn't a project. I wanted to <strong>change the voice itself</strong>, and brainstormed four directions:</p>
+  <p class="small">Running a pretrained TTS isn't a project. We wanted to <strong>change the voice itself</strong>, and brainstormed four directions:</p>
   <ul class="clean">
     <li><strong>B1 droid voice</strong>: a timbre change, instantly audible</li>
     <li><strong>Heavy accent</strong>: phoneme-level manipulation</li>
     <li><strong>Emotions</strong>: prosody control</li>
     <li><strong>Stuttering</strong>: rhythm manipulation</li>
   </ul>
-  <p class="small" style="margin-top:0.5em;">I dropped stuttering &amp; emotions (too shallow) and kept the <strong>droid</strong> as the core, accent as future work.</p>
-  <aside class="notes">[DIMA] Thanks. Running a pretrained model isn't really a project, so I wanted to change the voice itself. I brainstormed four directions: a B1 droid voice, a timbre change you hear instantly; a heavy accent, which is phoneme-level; emotions, which is prosody; and stuttering, which is rhythm. I dropped stuttering and emotions as too shallow, kept the droid as the core, and left the accent as future work.</aside>
+  <p class="small" style="margin-top:0.5em;">We dropped stuttering &amp; emotions (too shallow) and kept the <strong>droid</strong> as the core, accent as future work.</p>
+  <aside class="notes">[DIMA] Thanks. Running a pretrained model isn't really a project, so we wanted to change the voice itself. We brainstormed four directions: a B1 droid voice, a timbre change you hear instantly; a heavy accent, which is phoneme-level; emotions, which is prosody; and stuttering, which is rhythm. We dropped stuttering and emotions as too shallow, kept the droid as the core, and left the accent as future work.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Ideas</span></div>
 </section>
 
@@ -192,7 +192,7 @@
   <h2>Our choice: bake in a droid voice</h2>
   <ul class="clean">
     <li><strong>Core:</strong> fine-tune on a <strong>B1 droid voice</strong>; keep the <strong>accent</strong> as future work.</li>
-    <li>Post-processing sounded bad, so instead I used <strong>RVC</strong> to build the training data.</li>
+    <li>Post-processing sounded bad, so instead we used <strong>RVC</strong> to build the training data.</li>
   </ul>
   <p class="small" style="margin-top:0.5em;">Why this idea fits the project:</p>
   <ul class="clean">
@@ -200,7 +200,7 @@
     <li>A unique effect, <strong>audible even without metrics</strong>.</li>
     <li>Injecting a voice <em>into training</em>, a real way to play with the learning itself.</li>
   </ul>
-  <aside class="notes">[DIMA] So my choice: bake a B1 droid voice into the model, and leave the accent as future work. Post-processing sounded bad, so I built the data with RVC instead. This idea fits the project well: one consistent voice across the dataset, an effect you can hear even without metrics, and it lets me play with the training itself.</aside>
+  <aside class="notes">[DIMA] So our choice: bake a B1 droid voice into the model, and leave the accent as future work. Post-processing sounded bad, so we built the data with RVC instead. This idea fits the project well: one consistent voice across the dataset, an effect you can hear even without metrics, and it lets us play with the training itself.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
 </section>
 
@@ -209,7 +209,7 @@
   <h2>Building the dataset — RVC</h2>
   <div class="row">
     <div class="col">
-      <p class="small">I needed 24h of paired text+audio in the droid voice, can't record that. So I <strong>built it with RVC</strong> (voice conversion): it repaints the <strong>timbre</strong> but keeps the <strong>pronunciation</strong>, so the original transcripts stay valid.</p>
+      <p class="small">We needed 24h of paired text+audio in the droid voice, can't record that. So we <strong>built it with RVC</strong> (voice conversion): it repaints the <strong>timbre</strong> but keeps the <strong>pronunciation</strong>, so the original transcripts stay valid.</p>
       <div class="pipeline">LJSpeech (13,100 clips) ─► RVC → B1 droid ─► resample 22.05 kHz ─► 🤗 Hub</div>
       <ul class="clean">
         <li>Published: <code>Dmi1tr13/ljspeech-b1</code></li>
@@ -218,20 +218,20 @@
     </div>
     <div class="side"><img src="assets/plots/qr.png" alt="dataset QR" style="max-height:220px;"><p class="sub">scan → the dataset</p></div>
   </div>
-  <aside class="notes">[DIMA] To fine-tune I need lots of paired text and audio in the droid voice, you can't record 24 hours of a droid. So I built the data: I took all of LJSpeech and ran it through RVC, a voice-conversion model, which changes the timbre to the B1 droid but keeps the words intact, so the original transcripts still match. That gave me 13,100 paired clips instantly, and I published the dataset on the Hugging Face Hub. Emir will take the model from here.</aside>
+  <aside class="notes">[DIMA] To fine-tune we need lots of paired text and audio in the droid voice, you can't record 24 hours of a droid. So we built the data: we took all of LJSpeech and ran it through RVC, a voice-conversion model, which changes the timbre to the B1 droid but keeps the words intact, so the original transcripts still match. That gave us 13,100 paired clips instantly, and we published the dataset on the Hugging Face Hub. Emir will take the model from here.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Data</span></div>
 </section>
 
 <!-- 4b · TRADE-OFF, DIMA -->
 <section>
-  <h2>The trade-off I chose</h2>
+  <h2>The trade-off we chose</h2>
   <p class="small">Because the data is made by RVC, the model learns from <strong>RVC's output</strong>, not a real droid recording.</p>
   <ul class="clean">
     <li><span class="bad">↓</span> <strong>Quality can't beat the teacher</strong>: RVC is the upper bound.</li>
     <li><span class="good">↑</span> But the model makes the droid voice <strong>itself</strong>, end-to-end, <strong>no second model in production</strong>.</li>
   </ul>
   <blockquote class="small" style="margin-top:0.5em;">Post-processing = run RVC every time. Baking = the voice is built in. A conscious trade: a bit less ceiling, full autonomy. <span class="muted">(Ilya measures exactly where that ceiling sits, later.)</span></blockquote>
-  <aside class="notes">[DIMA] One trade-off I made consciously. Because the data comes from RVC, the model learns from RVC's output, so its quality can't beat that teacher, RVC is the upper bound. But in return the model produces the droid voice itself, end-to-end, with no second model in production. Post-processing would mean running RVC every single time; baking means the voice is built in. A bit less ceiling for full autonomy, and Ilya actually measured where that ceiling sits.</aside>
+  <aside class="notes">[DIMA] One trade-off we made consciously. Because the data comes from RVC, the model learns from RVC's output, so its quality can't beat that teacher, RVC is the upper bound. But in return the model produces the droid voice itself, end-to-end, with no second model in production. Post-processing would mean running RVC every single time; baking means the voice is built in. A bit less ceiling for full autonomy, and Ilya actually measured where that ceiling sits.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Approach</span></div>
 </section>
 
@@ -380,8 +380,8 @@
     <li><strong>D step</strong>: real vs. <em>detached</em> fake → discriminator loss</li>
     <li><strong>G step</strong>: 5 losses: recon (L1 mel, <span class="kpi">×45</span>) · KL · duration · adversarial · feature-matching</li>
   </ul>
-  <p class="small" style="margin-top:0.5em;"><em><strong>I</strong> wrapped the alternation in <strong>decorators</strong> — read the method and it's linear; need the wiring, read the decorator. Logic in the function, complexity in the decorator.</em></p>
-  <aside class="notes">[DIMA] One training step: encode text to a prior, encode the real audio to a latent, run the flow, use Monotonic Alignment Search to line up text with audio frames, slice a short segment, decode it to a waveform, and compute the losses. Then it's a standard GAN alternation, the discriminator trains on real versus detached fake, then the generator trains on five losses to fool it, with reconstruction weighted 45×. I kept the messy GAN plumbing, two optimizers, detach, clipping, mixed precision, accumulation, inside decorators, so the actual step logic reads cleanly and the wiring lives separately.</aside>
+  <p class="small" style="margin-top:0.5em;"><em><strong>We</strong> wrapped the alternation in <strong>decorators</strong> — read the method and it's linear; need the wiring, read the decorator. Logic in the function, complexity in the decorator.</em></p>
+  <aside class="notes">[DIMA] One training step: encode text to a prior, encode the real audio to a latent, run the flow, use Monotonic Alignment Search to line up text with audio frames, slice a short segment, decode it to a waveform, and compute the losses. Then it's a standard GAN alternation, the discriminator trains on real versus detached fake, then the generator trains on five losses to fool it, with reconstruction weighted 45×. We kept the messy GAN plumbing, two optimizers, detach, clipping, mixed precision, accumulation, inside decorators, so the actual step logic reads cleanly and the wiring lives separately.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
 
@@ -391,11 +391,11 @@
   <h3 style="margin-top:-0.35em; margin-bottom:0.4em; color:#5a6678; font-weight:400;">solving the readability problem — or creating it :)</h3>
   <p class="small">The GAN loop is messy: two optimizers, detach, zero-grad, backward, clip, AMP scaler, accumulation, checkpointing, all wrapped around two tiny core steps.</p>
   <ul class="clean">
-    <li>I moved <strong>all that wiring into decorators</strong>, leaving only the real <strong>D-step / G-step logic</strong> in the methods.</li>
+    <li>We moved <strong>all that wiring into decorators</strong>, leaving only the real <strong>D-step / G-step logic</strong> in the methods.</li>
     <li>Read the method → the algorithm is linear and clear. Need the plumbing → read the decorator.</li>
   </ul>
   <p class="small" style="margin-top:0.5em;">Normal in ML: <code>torch.nn.Module</code> hides backward/autograd the same way. The complexity doesn't vanish, it goes where it belongs.</p>
-  <aside class="notes">[DIMA] One engineering thing I am proud of. The GAN loop is messy, two optimizers, detach, zero-grad, backward, clipping, the AMP scaler, accumulation, checkpointing, all tangled around two tiny core steps. So I moved all that wiring into decorators and left only the actual discriminator-step and generator-step logic in the methods. Read the method and the algorithm is linear; need the plumbing, read the decorator. Same idea as torch.nn.Module hiding backward, the complexity does not disappear, it goes where it belongs.</aside>
+  <aside class="notes">[DIMA] One engineering thing we are proud of. The GAN loop is messy, two optimizers, detach, zero-grad, backward, clipping, the AMP scaler, accumulation, checkpointing, all tangled around two tiny core steps. So we moved all that wiring into decorators and left only the actual discriminator-step and generator-step logic in the methods. Read the method and the algorithm is linear; need the plumbing, read the decorator. Same idea as torch.nn.Module hiding backward, the complexity does not disappear, it goes where it belongs.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Engineering</span></div>
 </section>
 
@@ -408,7 +408,7 @@
     <li><strong>Fitting 8 GB:</strong> batch 1 + <strong>gradient accumulation</strong>, <strong>AMP fp16</strong>, <code>num_workers=0</code> (Windows DataLoader crash).</li>
   </ul>
   <blockquote class="small">The 8 GB card is the whole reason for batch 1 + accumulation and fp16, full numbers &amp; config coming up.</blockquote>
-  <aside class="notes">[DIMA] On compute, we started on Colab and it fought us: sessions dropped, the free tier caps around 15 minutes, disk filled with checkpoints. So I moved to my local RTX 5060, 8 gigs. To fit 8 gigs I used batch size 1 with gradient accumulation for a larger effective batch, mixed-precision fp16, and zero dataloader workers because the Windows loader kept crashing. The final clean run was 5 epochs, about 9.7 GPU-hours, roughly 1.9 hours per epoch, and that's on top of maybe three times that in failed runs and debugging.</aside>
+  <aside class="notes">[DIMA] On compute, we started on Colab and it fought us: sessions dropped, the free tier caps around 15 minutes, disk filled with checkpoints. So we moved to our local RTX 5060, 8 gigs. To fit 8 gigs we used batch size 1 with gradient accumulation for a larger effective batch, mixed-precision fp16, and zero dataloader workers because the Windows loader kept crashing. The final clean run was 5 epochs, about 9.7 GPU-hours, roughly 1.9 hours per epoch, and that's on top of maybe three times that in failed runs and debugging.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
 
@@ -423,7 +423,7 @@
     <tr><td>3</td><td>fresh discriminator <strong>corrupted</strong> the pretrained decoder</td><td><strong>warm up D</strong> 1500 steps + lower LR</td></tr>
   </table>
   <p class="good" style="margin-top:0.6em;">→ real training: recon 0.85 → 0.40, correct speech rhythm.</p>
-  <aside class="notes">[DIMA] This was the hardest and most interesting part, at first nothing converged. The reconstruction loss was stuck, the duration loss was in the hundreds, and the voice came out way too fast. Three bugs. One: the duration loss was about a hundred times too large because it was averaged wrong, fixing the normalization dropped it from three hundred to under two. Two: gradient clipping was so tight it killed the generator's updates, loosening it let reconstruction finally drop. Three: a fresh, untrained discriminator was corrupting the pretrained decoder, so I warmed up the discriminator alone for 1500 steps and lowered the learning rate. After that, real training: reconstruction fell from 0.85 to 0.40 and the rhythm became correct.</aside>
+  <aside class="notes">[DIMA] This was the hardest and most interesting part, at first nothing converged. The reconstruction loss was stuck, the duration loss was in the hundreds, and the voice came out way too fast. Three bugs. One: the duration loss was about a hundred times too large because it was averaged wrong, fixing the normalization dropped it from three hundred to under two. Two: gradient clipping was so tight it killed the generator's updates, loosening it let reconstruction finally drop. Three: a fresh, untrained discriminator was corrupting the pretrained decoder, so we warmed up the discriminator alone for 1500 steps and lowered the learning rate. After that, real training: reconstruction fell from 0.85 to 0.40 and the rhythm became correct.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
 
@@ -457,7 +457,7 @@
     </div>
   </div>
   <blockquote class="small" style="margin-top:10px;">Plus <strong>~3× more</strong> in failed runs &amp; debugging, and the <strong>RVC baking</strong> of the whole 13,100-clip dataset on top. The 9.68 h is only the final clean pass, the real work was everything before it.</blockquote>
-  <aside class="notes">[DIMA] The numbers. The final clean run was 5 epochs, about 1.9 hours each, roughly 9.7 GPU-hours total, plus maybe three times that in failed runs and debugging, all on my local RTX 5060. Key config: learning rate 1e-4, much gentler than the from-scratch 2e-4; batch size 1 with gradient accumulation; a decoder crop of 8192; gradient clip at 10; a discriminator warm-up of 1500 steps; mixed precision; and reconstruction weighted 45.</aside>
+  <aside class="notes">[DIMA] The numbers. The final clean run was 5 epochs, about 1.9 hours each, roughly 9.7 GPU-hours total, plus maybe three times that in failed runs and debugging, all on our local RTX 5060. Key config: learning rate 1e-4, much gentler than the from-scratch 2e-4; batch size 1 with gradient accumulation; a decoder crop of 8192; gradient clip at 10; a discriminator warm-up of 1500 steps; mixed precision; and reconstruction weighted 45.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training</span></div>
 </section>
 
@@ -465,8 +465,8 @@
 <section>
   <h2>Reconstruction loss (L1 mel)</h2>
   <div style="text-align:center;"><img src="assets/plots/recon.png" alt="reconstruction loss" style="max-height:410px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
-  <p class="small muted" style="margin-top:8px;">Sharp drop, then plateau ~0.42, best at step <strong>26,700 (0.404)</strong>: the core voice is learned early; after that the GAN slowly drifts up. <strong>That's why I don't take the last checkpoint.</strong></p>
-  <aside class="notes">[DIMA] Now the training curves, one loss at a time. Reconstruction, the L1 on the mel, drops sharply then plateaus around 0.42, best at step 26,700. The core voice is learned early; after that the GAN slowly drifts up, which is exactly why I don't just take the last checkpoint.</aside>
+  <p class="small muted" style="margin-top:8px;">Sharp drop, then plateau ~0.42, best at step <strong>26,700 (0.404)</strong>: the core voice is learned early; after that the GAN slowly drifts up. <strong>That's why we don't take the last checkpoint.</strong></p>
+  <aside class="notes">[DIMA] Now the training curves, one loss at a time. Reconstruction, the L1 on the mel, drops sharply then plateaus around 0.42, best at step 26,700. The core voice is learned early; after that the GAN slowly drifts up, which is exactly why we don't just take the last checkpoint.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
 </section>
 
@@ -475,7 +475,7 @@
   <h2>Duration loss</h2>
   <div style="text-align:center;"><img src="assets/plots/dur.png" alt="duration loss" style="max-height:410px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
   <p class="small muted" style="margin-top:8px;">After the normalization fix, duration sits at a healthy <strong>~1.6</strong> (best 1.55, was 100–475): correct, stable speech rhythm.</p>
-  <aside class="notes">[DIMA] Duration loss. After I fixed the normalization bug it sits at a healthy 1.6, it used to be in the hundreds. That gives correct, stable speech rhythm.</aside>
+  <aside class="notes">[DIMA] Duration loss. After we fixed the normalization bug it sits at a healthy 1.6, it used to be in the hundreds. That gives correct, stable speech rhythm.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
 </section>
 
@@ -502,7 +502,7 @@
   <h2>Discriminator loss</h2>
   <div style="text-align:center;"><img src="assets/plots/d.png" alt="discriminator loss" style="max-height:410px; width:auto; border:1px solid var(--rule); border-radius:6px;"></div>
   <p class="small muted" style="margin-top:8px;">Stable around <strong>~5.5</strong>: neither winning nor collapsing. The warm-up kept it from overpowering the pretrained decoder.</p>
-  <aside class="notes">[DIMA] The discriminator I built from scratch stays stable around 5.5, neither winning nor collapsing. The warm-up is what kept it from overpowering the pretrained decoder.</aside>
+  <aside class="notes">[DIMA] The discriminator we built from scratch stays stable around 5.5, neither winning nor collapsing. The warm-up is what kept it from overpowering the pretrained decoder.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Training curves</span></div>
 </section>
 
@@ -548,7 +548,7 @@
     <li><strong>Independent ASR</strong>: Whisper is frozen and off-the-shelf, never part of training → no circularity.</li>
   </ul>
   <div class="pipeline" style="margin-top:14px;">manifest (text + reference audio) ─► synthesize @ checkpoint ─► Whisper ASR  +  spectral compare ─► WER · CER · MCD ─► <strong>EvalResult</strong></div>
-  <aside class="notes">[ILYA] How we actually evaluate. We hold out the last 5% of the data, which the model never trains on. Before and after is a single checkpoint swap on the same prompts, so it is apples-to-apples. I built the evaluation as a small contract-first module: feed it a manifest of texts and reference audio, and it returns one result object with WER, CER and MCD in a single pass. And the ASR is Whisper, frozen and off-the-shelf, so it never touches training and there is no circularity.</aside>
+  <aside class="notes">[ILYA] How we actually evaluate. We hold out the last 5% of the data, which the model never trains on. Before and after is a single checkpoint swap on the same prompts, so it is apples-to-apples. We built the evaluation as a small contract-first module: feed it a manifest of texts and reference audio, and it returns one result object with WER, CER and MCD in a single pass. And the ASR is Whisper, frozen and off-the-shelf, so it never touches training and there is no circularity.</aside>
   <div class="footer"><span>Project 13: Text to Speech</span><span>Evaluation</span></div>
 </section>
 

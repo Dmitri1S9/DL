@@ -14,13 +14,13 @@ Handoffs (say the next person's name so it's smooth): Emir → **Dima** → Emir
 ## EMIR — opening (slides 0–2) · ~2 min
 
 **Slide 0 · Title**
-> Hi — we're Dima, Emir and Ilya. We took a model that already talks perfectly fine… and taught it to talk like a Star Wars battle droid. On purpose. *(beat)* This is Project 13. Let me tell you why.
+> Hi — we're Dima, Emir and Ilya. We took a model that already talks perfectly fine… and taught it to talk like a Star Wars battle droid. On purpose. *(beat)* This is Project 13. Let us tell you why.
 
 **Slide 1 · The goal**
 > A pretrained TTS model already produces clean speech, so "make good speech" isn't a project — it already does that. The actual goal is to **change the voice**. We fine-tune it into a B1 battle droid. And we picked a droid on purpose: a subtle voice makes a demo ambiguous, but a droid? You'll hear it instantly — you don't even need the metrics to know it worked. *(beat)* Although we did the metrics anyway, because it's a deep learning course.
 
 **Slide 2 · Project architecture**
-> Quick word on how three people work on one model without killing each other. I set the repo up **contract-first**: data, model and evaluation are separate packages that only talk through small fixed interfaces — a manifest and one result object — never each other's internals. So the model stays swappable and we could all build in parallel. One Makefile runs the whole thing, same commands locally and on Colab, and there's an offline mock + smoke test so the pipeline wires up in seconds with no GPU. With that skeleton, Dima takes the model.
+> Quick word on how three people work on one model without killing each other. We set the repo up **contract-first**: data, model and evaluation are separate packages that only talk through small fixed interfaces — a manifest and one result object — never each other's internals. So the model stays swappable and we could all build in parallel. One Makefile runs the whole thing, same commands locally and on Colab, and there's an offline mock + smoke test so the pipeline wires up in seconds with no GPU. With that skeleton, Dima takes the model.
 
 ---
 
@@ -28,18 +28,18 @@ Handoffs (say the next person's name so it's smooth): Emir → **Dima** → Emir
 *(short sentences, simple words)*
 
 **Slide 3 · Three ways to change a TTS voice**
-> Thanks. There are three ways to change a voice. **Pre-process** the input — good for an accent, but limited. **Post-process** the audio — I tried it, it sounds fake. Or **bake** the voice into the model by fine-tuning. That is the real way, so that is what I did.
+> Thanks. There are three ways to change a voice. **Pre-process** the input — good for an accent, but limited. **Post-process** the audio — we tried it, it sounds fake. Or **bake** the voice into the model by fine-tuning. That is the real way, so that is what we did.
 
 **Slide 4 · Where to start: the ideas**
-> I had four ideas: droid voice, accent, emotions, stuttering. Emotions and stuttering were too shallow, so I dropped them. I kept the **droid**, and left the accent as future work.
+> We had four ideas: droid voice, accent, emotions, stuttering. Emotions and stuttering were too shallow, so we dropped them. We kept the **droid**, and left the accent as future work.
 
 **Slide 5 · Our choice: bake in a droid voice**
-> So: bake a droid voice into the model. One consistent voice, you can hear it without metrics, and it lets me play with the training itself. That's the fun part.
+> So: bake a droid voice into the model. One consistent voice, you can hear it without metrics, and it lets us play with the training itself. That's the fun part.
 
 **Slide 6 · Building the dataset — RVC**
-> But I need data — a lot of paired text and audio in the droid voice. You can't record 24 hours of a droid. *(beat)* I checked. So I built it: I took all of LJSpeech and ran it through **RVC**, voice conversion. It changes the timbre to the droid but keeps the words, so the transcripts still match. 13,100 clips, for free. Published on Hugging Face — QR's on the slide.
+> But we need data — a lot of paired text and audio in the droid voice. You can't record 24 hours of a droid. *(beat)* We checked. So we built it: we took all of LJSpeech and ran it through **RVC**, voice conversion. It changes the timbre to the droid but keeps the words, so the transcripts still match. 13,100 clips, for free. Published on Hugging Face — QR's on the slide.
 
-**Slide 7 · The trade-off I chose**
+**Slide 7 · The trade-off we chose**
 > One honest trade-off. The data comes from RVC, so the model learns from RVC's output — it can't beat that teacher. But in return, the model makes the droid voice **itself**, end to end. No second model in production. A bit less ceiling, full autonomy. And Ilya actually measured where that ceiling is — you'll see. Back to Emir for the model.
 
 ---
@@ -64,22 +64,22 @@ Handoffs (say the next person's name so it's smooth): Emir → **Dima** → Emir
 *(short sentences; slides 17–23 are a fast montage)*
 
 **Slide 12 · How training works**
-> One training step: encode text, encode the real audio, align them with MAS, decode a short segment to a waveform, compute the losses. Then a standard GAN: discriminator on real versus fake, then generator on five losses. Reconstruction is weighted 45. The messy plumbing — two optimizers, detach, clipping, mixed precision — I put in decorators, so the step itself reads clean.
+> One training step: encode text, encode the real audio, align them with MAS, decode a short segment to a waveform, compute the losses. Then a standard GAN: discriminator on real versus fake, then generator on five losses. Reconstruction is weighted 45. The messy plumbing — two optimizers, detach, clipping, mixed precision — we put in decorators, so the step itself reads clean.
 
 **Slide 13 · Abstraction**
-> Quick thing I'm proud of. The GAN loop is messy. I moved all the wiring into **decorators**, and left only the real step logic in the methods. Read the method — it's linear. Need the plumbing — read the decorator. Same idea as `torch.nn.Module` hiding backward. The complexity doesn't vanish, it just goes where it belongs.
+> Quick thing we're proud of. The GAN loop is messy. We moved all the wiring into **decorators**, and left only the real step logic in the methods. Read the method — it's linear. Need the plumbing — read the decorator. Same idea as `torch.nn.Module` hiding backward. The complexity doesn't vanish, it just goes where it belongs.
 
 **Slide 14 · Where & how we trained**
-> Compute. Colab first — it dropped my session after 15 minutes. Very generous. *(beat)* So I moved to my local RTX 5060, 8 gigs. To fit 8 gigs: batch size 1 with gradient accumulation, fp16, and zero dataloader workers because Windows kept crashing.
+> Compute. Colab first — it dropped our session after 15 minutes. Very generous. *(beat)* So we moved to our local RTX 5060, 8 gigs. To fit 8 gigs: batch size 1 with gradient accumulation, fp16, and zero dataloader workers because Windows kept crashing.
 
 **Slide 15 · Problems & fixes: nothing converged**
-> At first — nothing worked. Three bugs. *(point at table)* Duration loss: a hundred times too big — I fixed the averaging, three hundred down to two. Grad clipping: too tight, it killed the generator — I loosened it. And a fresh discriminator was wrecking the pretrained decoder — so I warmed it up first. After that: real training.
+> At first — nothing worked. Three bugs. *(point at table)* Duration loss: a hundred times too big — we fixed the averaging, three hundred down to two. Grad clipping: too tight, it killed the generator — we loosened it. And a fresh discriminator was wrecking the pretrained decoder — so we warmed it up first. After that: real training.
 
 **Slide 16 · Training setup & cost**
 > The numbers: 5 epochs, about 1.9 hours each, ~9.7 GPU-hours for the clean run — plus maybe three times that in failed runs, plus baking the whole dataset with RVC. Config's on the slide: learning rate 1e-4, segment 8192, grad-clip 10, disc warm-up 1500.
 
 **Slides 17–23 · Loss curves** ⏩ *montage — click fast*
-> And here are all my training losses. Short version: everything's stable. *(click)* Reconstruction drops then flattens — the voice is learned early. *(click, click)* Duration and KL — stable. *(click ×4)* The three GAN losses and the total — stable, nothing exploded, the discriminator I built does its job. *(land on last)* But a nice loss curve does **not** prove the speech is actually understandable. That's Ilya's job.
+> And here are all our training losses. Short version: everything's stable. *(click)* Reconstruction drops then flattens — the voice is learned early. *(click, click)* Duration and KL — stable. *(click ×4)* The three GAN losses and the total — stable, nothing exploded, the discriminator we built does its job. *(land on last)* But a nice loss curve does **not** prove the speech is actually understandable. That's Ilya's job.
 
 ---
 

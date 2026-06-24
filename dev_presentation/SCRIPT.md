@@ -4,14 +4,14 @@
 > Read your **[NAME]** lines. Hand-offs are marked `→`. These same words are the
 > presenter notes in the deck (press **S** for speaker view), kept in sync.
 >
-> Speakers: **EMIR** (data / engineering / theory) · **DIMA** (model / training, "I" voice) · **ILYA** (evaluation).
+> Speakers: **EMIR** (data / engineering / theory) · **DIMA** (model / training) · **ILYA** (evaluation).
 > Pace ~135 words/min. Pause at `//`. **Target: 15 min presenting** (Q&A is separate, not counted).
 
 ---
 
 ## Slide 1: Title · EMIR
 
-**[EMIR]** "Hi, we're Dima, Emir and Ilya, **Project 13, Text to Speech**. // We took a pretrained speech model and **taught it a brand-new custom voice**. Let me start with what we were actually trying to do."
+**[EMIR]** "Hi, we're Dima, Emir and Ilya, **Project 13, Text to Speech**. // We took a pretrained speech model and **taught it a brand-new custom voice**. Let's start with what we were actually trying to do."
 
 `→ stays with Emir`
 
@@ -27,7 +27,7 @@
 
 ## Slide 3: Where to start: the ideas · DIMA
 
-**[DIMA]** "Thanks. Running a pretrained model isn't really a project, so I wanted to **change the voice itself**. I brainstormed four directions: // a **B1 droid voice**, a timbre change you hear instantly; a **heavy accent**, which is phoneme-level; **emotions**, which is prosody; and **stuttering**, which is rhythm. // I dropped stuttering and emotions as too shallow, kept the **droid** as the core, and left the accent as future work."
+**[DIMA]** "Thanks. Running a pretrained model isn't really a project, so we wanted to **change the voice itself**. We brainstormed four directions: // a **B1 droid voice**, a timbre change you hear instantly; a **heavy accent**, which is phoneme-level; **emotions**, which is prosody; and **stuttering**, which is rhythm. // We dropped stuttering and emotions as too shallow, kept the **droid** as the core, and left the accent as future work."
 
 `→ stays with Dima`
 
@@ -35,7 +35,7 @@
 
 ## Slide 4: Three ways to change a TTS voice · DIMA
 
-**[DIMA]** "There are three ways to change the voice. // I can **pre-process** the input, useful for an accent, but limited. I can **post-process** the output audio, I tried that and it sounds robotic and fake. // Or I **bake the voice into the model itself** by fine-tuning on data in that voice, that's the real, proper way, and that's what I did. The droid becomes the model's own voice."
+**[DIMA]** "There are three ways to change the voice. // We can **pre-process** the input, useful for an accent, but limited. We can **post-process** the output audio, we tried that and it sounds robotic and fake. // Or we **bake the voice into the model itself** by fine-tuning on data in that voice, that's the real, proper way, and that's what we did. The droid becomes the model's own voice."
 
 `→ stays with Dima`
 
@@ -43,7 +43,7 @@
 
 ## Slide 5: Building the dataset · DIMA
 
-**[DIMA]** "To fine-tune I need lots of paired text and audio in the droid voice, you can't record 24 hours of a droid. So **I built the data**: // I took all of LJSpeech and ran it through **RVC**, a voice-conversion model, which changes the timbre to the B1 droid but keeps the words intact, so the original transcripts still match. // That gave me **13,100 paired clips** instantly, and I **published** the dataset on the Hugging Face Hub. Emir will take the model from here."
+**[DIMA]** "To fine-tune we need lots of paired text and audio in the droid voice, you can't record 24 hours of a droid. So **we built the data**: // we took all of LJSpeech and ran it through **RVC**, a voice-conversion model, which changes the timbre to the B1 droid but keeps the words intact, so the original transcripts still match. // That gave us **13,100 paired clips** instantly, and we **published** the dataset on the Hugging Face Hub. Emir will take the model from here."
 
 `→ HANDS TO EMIR`
 
@@ -83,7 +83,7 @@
 
 ## Slide 10: How training works · DIMA
 
-**[DIMA]** "One training step: encode text to a prior, encode the real audio to a latent, run the flow, use Monotonic Alignment Search to line up text with audio frames, slice a short segment, decode it to a waveform, and compute the losses. // Then it's a standard **GAN alternation**, the discriminator trains on real versus detached fake, then the generator trains on **five losses** to fool it, with reconstruction weighted 45×. // I kept the messy GAN plumbing, two optimizers, detach, clipping, mixed precision, accumulation, inside **decorators**, so the actual step logic reads cleanly and the wiring lives separately."
+**[DIMA]** "One training step: encode text to a prior, encode the real audio to a latent, run the flow, use Monotonic Alignment Search to line up text with audio frames, slice a short segment, decode it to a waveform, and compute the losses. // Then it's a standard **GAN alternation**, the discriminator trains on real versus detached fake, then the generator trains on **five losses** to fool it, with reconstruction weighted 45×. // We kept the messy GAN plumbing, two optimizers, detach, clipping, mixed precision, accumulation, inside **decorators**, so the actual step logic reads cleanly and the wiring lives separately."
 
 `→ stays with Dima`
 
@@ -91,15 +91,15 @@
 
 ## Slide 11: Abstraction: keeping the loop readable · DIMA
 
-**[DIMA]** "One engineering thing I am proud of. The GAN loop is messy, two optimizers, detach, zero-grad, backward, clipping, the AMP scaler, accumulation, checkpointing, all tangled around two tiny core steps. // So I moved all that wiring into **decorators** and left only the actual discriminator-step and generator-step logic in the methods. // Read the method and the algorithm is linear; need the plumbing, read the decorator. Same idea as `torch.nn.Module` hiding backward, the complexity does not disappear, it goes where it belongs."
+**[DIMA]** "One engineering thing we are proud of. The GAN loop is messy, two optimizers, detach, zero-grad, backward, clipping, the AMP scaler, accumulation, checkpointing, all tangled around two tiny core steps. // So we moved all that wiring into **decorators** and left only the actual discriminator-step and generator-step logic in the methods. // Read the method and the algorithm is linear; need the plumbing, read the decorator. Same idea as `torch.nn.Module` hiding backward, the complexity does not disappear, it goes where it belongs."
 
 `→ stays with Dima`
 
 ---
 
-## Slide 12: Where & how I trained · DIMA
+## Slide 12: Where & how we trained · DIMA
 
-**[DIMA]** "On compute, we started on **Colab** and it fought us: sessions dropped, the free tier caps around 15 minutes, disk filled with checkpoints. // So I moved to my **local RTX 5060**, 8 gigs. To fit 8 gigs I used batch size 1 with **gradient accumulation** for a larger effective batch, mixed-precision fp16, and zero dataloader workers because the Windows loader kept crashing. // The final clean run was **5 epochs, about 9.7 GPU-hours**, roughly 1.9 hours per epoch, and that's on top of maybe three times that in failed runs and debugging."
+**[DIMA]** "On compute, we started on **Colab** and it fought us: sessions dropped, the free tier caps around 15 minutes, disk filled with checkpoints. // So we moved to our **local RTX 5060**, 8 gigs. To fit 8 gigs we used batch size 1 with **gradient accumulation** for a larger effective batch, mixed-precision fp16, and zero dataloader workers because the Windows loader kept crashing. // The final clean run was **5 epochs, about 9.7 GPU-hours**, roughly 1.9 hours per epoch, and that's on top of maybe three times that in failed runs and debugging."
 
 `→ stays with Dima`
 
@@ -107,7 +107,7 @@
 
 ## Slide 13: Training cost & config · DIMA
 
-**[DIMA]** "The numbers. The final clean run was 5 epochs, about 1.9 hours each, roughly **9.7 GPU-hours** total, plus maybe three times that in failed runs and debugging, all on my local RTX 5060. // Key config: learning rate **1e-4**, much gentler than the from-scratch 2e-4; batch size 1 with gradient accumulation; a decoder crop of 8192; gradient clip at 10; a discriminator warm-up of 1500 steps; mixed precision; and reconstruction weighted 45."
+**[DIMA]** "The numbers. The final clean run was 5 epochs, about 1.9 hours each, roughly **9.7 GPU-hours** total, plus maybe three times that in failed runs and debugging, all on our local RTX 5060. // Key config: learning rate **1e-4**, much gentler than the from-scratch 2e-4; batch size 1 with gradient accumulation; a decoder crop of 8192; gradient clip at 10; a discriminator warm-up of 1500 steps; mixed precision; and reconstruction weighted 45."
 
 `→ stays with Dima`
 
@@ -115,7 +115,7 @@
 
 ## Slide 14: Problems & fixes · DIMA
 
-**[DIMA]** "This was the hardest and most interesting part, at first **nothing converged**. The reconstruction loss was stuck, the duration loss was in the hundreds, and the voice came out way too fast. Three bugs. // **One:** the duration loss was about a hundred times too large because it was averaged wrong, fixing the normalization dropped it from three hundred to under two. // **Two:** gradient clipping was so tight it killed the generator's updates, loosening it let reconstruction finally drop. // **Three:** a fresh, untrained discriminator was corrupting the pretrained decoder, so I warmed up the discriminator alone for 1500 steps and lowered the learning rate. // After that, real training: reconstruction fell from 0.85 to 0.40 and the rhythm became correct."
+**[DIMA]** "This was the hardest and most interesting part, at first **nothing converged**. The reconstruction loss was stuck, the duration loss was in the hundreds, and the voice came out way too fast. Three bugs. // **One:** the duration loss was about a hundred times too large because it was averaged wrong, fixing the normalization dropped it from three hundred to under two. // **Two:** gradient clipping was so tight it killed the generator's updates, loosening it let reconstruction finally drop. // **Three:** a fresh, untrained discriminator was corrupting the pretrained decoder, so we warmed up the discriminator alone for 1500 steps and lowered the learning rate. // After that, real training: reconstruction fell from 0.85 to 0.40 and the rhythm became correct."
 
 `→ stays with Dima`
 
@@ -123,7 +123,7 @@
 
 ## Slide 15: Training curves: the voice is learned · DIMA
 
-**[DIMA]** "Here's what my training looked like once it worked. On the **left**, reconstruction drops sharply then plateaus around 0.42, the core voice is learned early on. // On the **right**, the duration loss settles at a healthy 1.6 after I fixed the normalization bug, which gives correct rhythm. // So the voice side is healthy. Next: did the **GAN**, and the discriminator I built from scratch, train stably?"
+**[DIMA]** "Here's what our training looked like once it worked. On the **left**, reconstruction drops sharply then plateaus around 0.42, the core voice is learned early on. // On the **right**, the duration loss settles at a healthy 1.6 after we fixed the normalization bug, which gives correct rhythm. // So the voice side is healthy. Next: did the **GAN**, and the discriminator we built from scratch, train stably?"
 
 `→ stays with Dima`
 
@@ -131,7 +131,7 @@
 
 ## Slide 16: Training curves: the GAN stayed balanced · DIMA
 
-**[DIMA]** "And it did. These are the two GAN losses. On the **left** the generator's adversarial loss oscillates around 4, it never runs away. On the **right** the discriminator sits stable around 5.5; the warm-up kept it from overpowering the pretrained decoder. // Neither one collapses, so the adversarial training reached a healthy equilibrium, the discriminator I wrote from scratch is doing exactly its job. // But a stable loss curve does **not** prove the speech is actually intelligible, that's what evaluation checks. Over to Ilya."
+**[DIMA]** "And it did. These are the two GAN losses. On the **left** the generator's adversarial loss oscillates around 4, it never runs away. On the **right** the discriminator sits stable around 5.5; the warm-up kept it from overpowering the pretrained decoder. // Neither one collapses, so the adversarial training reached a healthy equilibrium, the discriminator we wrote from scratch is doing exactly its job. // But a stable loss curve does **not** prove the speech is actually intelligible, that's what evaluation checks. Over to Ilya."
 
 `→ HANDS TO ILYA`
 
@@ -155,7 +155,7 @@
 
 ## Slide 19: How we evaluate · ILYA
 
-**[ILYA]** "How we actually evaluate. We hold out the last 5% of the data, which the model never trains on. // Before and after is a single **checkpoint swap** on the same prompts, so it is apples-to-apples. // I built the evaluation as a small **contract-first module**: feed it a manifest of texts and reference audio, and it returns one result object with WER, CER, MCD and F0 in a single pass. // And the ASR is **Whisper**, frozen and off-the-shelf, so it never touches training and there is no circularity."
+**[ILYA]** "How we actually evaluate. We hold out the last 5% of the data, which the model never trains on. // Before and after is a single **checkpoint swap** on the same prompts, so it is apples-to-apples. // We built the evaluation as a small **contract-first module**: feed it a manifest of texts and reference audio, and it returns one result object with WER, CER, MCD and F0 in a single pass. // And the ASR is **Whisper**, frozen and off-the-shelf, so it never touches training and there is no circularity."
 
 `→ stays with Ilya`
 
@@ -222,6 +222,6 @@ Route by ownership: **model** → Dima, **evaluation** → Ilya, **data & engine
 
 ### If running long (cut first)
 - Merge the two curve slides (15+16) into one mention.
-- Fold "Training cost & config" (13) into "Where & how I trained" (12) as one line.
+- Fold "Training cost & config" (13) into "Where & how we trained" (12) as one line.
 - Trim "Three ways" (4) to one line; drop the MAS detail (9) to a one-liner and lean on Q&A.
 - Collapse "Why these metrics" (18) into "Evaluation" (17), it restates the same three metrics.

@@ -22,7 +22,18 @@ HERE = Path(__file__).resolve().parent
 STANDALONE = HERE / 'presentation_standalone.html'
 SRC = HERE / 'presentation.html'
 OUT = Path.home() / 'Downloads' / 'Project13_presentation.pptx'
-CHROME = '/Users/ayliki/Library/Caches/ms-playwright/chromium_headless_shell-1217/chrome-headless-shell-mac-arm64/chrome-headless-shell'
+def _find_chrome() -> str | None:
+    """Locate a Playwright headless-shell binary in the current user's cache.
+
+    Falls back to None (Playwright's bundled browser) so the build is portable
+    across machines instead of relying on one hard-coded absolute path.
+    """
+    base = Path.home() / 'Library' / 'Caches' / 'ms-playwright'
+    hits = sorted(base.glob('chromium_headless_shell-*/chrome-headless-shell-*/chrome-headless-shell'))
+    return str(hits[-1]) if hits else None
+
+
+CHROME = _find_chrome()
 TMP = Path('/tmp/pptx_shots')
 DEMO_AUDIO = [HERE / 'assets/audio/demo_base.wav', HERE / 'assets/audio/demo_finetuned.wav']
 
