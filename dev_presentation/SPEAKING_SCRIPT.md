@@ -10,9 +10,11 @@
 > 1. **Slides 18–24 (loss curves) = ONE montage**, ~30 s total, click fast. Two sentences for all seven — do *not* explain each.
 > 2. **Slide 16 (3 bugs)** — say the short version, don't re-derive each fix.
 
-> ⚠️ **Two speaker conflicts to confirm with the team** (deck notes vs. this split):
+> ⚠️ **Speaker / content conflicts to confirm with the team:**
 > - **Sl. 18–24** are written in Dima's voice in the deck; here they're Ilya's (neutralised wording).
 > - **Sl. 30 (Takeaways)** is marked `[EMIR]` in the deck and reads like Emir's close — here it's under Ilya per the split. **Probably still Emir — decide.**
+> - **Dima's recording also covered the model section (9–12) and the bug story (16)** — those are Emir's in this split. Decide who actually says them. Dima has first-hand discriminator detail worth keeping somewhere on **sl. 11**: he made ~10 fake audios, split each into **prime-number periods** (the MPD), and made degraded / sped-up copies (the MSD).
+> - **Sl. 15 fact check:** Dima's recording says **Google Cloud** + "billing mistakes / burned money"; the deck slide says **Colab** (free, sessions drop ~15 min). Pick one and make the slide text match.
 
 > 📊 **Numbers — use the deck's, not the cheatsheet's:** WER **14.4 %** (epoch 2, best) vs ceiling **5.75 %**, on **655** held-out clips; MCD **10.5 → 6.0 dB**. (The cheatsheet's "29.2 %" is a stale 20-clip number — don't quote it.)
 
@@ -30,19 +32,19 @@
 ---
 
 ## Slide 4 · Three ways to change a TTS voice — [DIMA]
-> Thanks. There are three ways to change a voice. You can **pre-process** the input — good for an accent, but limited. You can **post-process** the output audio — I tried it, it sounds fake and robotic. Or you **bake** the voice into the model itself by fine-tuning. That's the real way, and that's what we did — the droid becomes the model's own voice.
+> Thanks. From the start, I wanted to add something of my own to the project, so I did a bit of research on how I could actually influence the model's output. There are three ways. **One — pre-process the input:** change the text we feed the model, using phonemes; that's how you'd do an accent, and I'll come back to it. **Two — post-process the output:** filter the audio after the model. I rejected this — first, it isn't really deep learning; and second, the result sounded *disgusting*. **Three — bake the voice in:** basically pre-processing during training — you change the dataset itself. That's the real way, and that's what I did.
 
 ## Slide 5 · Where to start: the ideas — [DIMA]
-> We brainstormed four directions: a **B1 droid voice** — a timbre change you hear instantly; a **heavy accent** — phoneme-level; **emotions** — prosody; and **stuttering** — rhythm. Emotions and stuttering were too shallow, so we dropped them. We kept the droid as the core and left the accent as future work.
+> So, the ideas — I brainstormed four. A **B1 droid voice** — a timbre change you hear instantly. A **heavy accent** — phoneme-level. **Emotions** — prosody. And **stuttering** — rhythm. Emotions and stuttering don't really connect to deep learning, and we didn't have the time, so I dropped them. I kept the droid as the core and left the accent as future work.
 
 ## Slide 6 · Our choice: bake in a droid voice — [DIMA]
-> So: bake a B1 droid voice into the model. One consistent voice across the whole dataset, an effect you can hear without any metric, and — the fun part — it lets me play with the training itself. Since post-processing sounded bad, I built the training data with **RVC** instead.
+> So my choice: bake in the B1 droid voice. At first I wanted to do it with post-processing — but, as I said, the result was very strange, so I rejected that. Instead I found an open-source voice-conversion model called **RVC** that turns audio into something that sounds like a battle droid — General Grievous, basically. *(I watched a lot of Grievous clips to get the feel.)* So I use RVC to build the training data. One consistent voice, an effect you hear without any metric, and it lets me play with the training itself.
 
 ## Slide 7 · Building the dataset — RVC — [DIMA]
-> But I need data — a lot of paired text and audio in the droid voice. You can't record 24 hours of a droid. *(beat)* I checked. So I built it: I took all of LJSpeech and ran it through **RVC** — voice conversion. Think of it as a **Photoshop for voices**: it repaints the timbre to the droid but keeps the words, so the original transcripts still match. **13,100 paired clips, for free** — published on the Hugging Face Hub, QR's on the slide.
+> A quick word on **RVC**. I need a lot of paired text and audio in the droid voice — and you can't record 24 hours of a droid. *(beat)* I checked. So I built it: I took all of LJSpeech and ran every clip through RVC. It repaints the **timbre** to the droid but keeps the **words** intact, so the original transcripts still match. That gave me **13,100 paired clips, for free** — and I published the dataset on the Hugging Face Hub. QR's on the slide.
 
 ## Slide 8 · The trade-off we chose — [DIMA]
-> One honest trade-off. Because the data comes from RVC, the model learns from **RVC's output** — so its quality **can't beat that teacher**; RVC is the upper bound. But in return, the model produces the droid voice **itself**, end-to-end, with **no second model in production**. Post-processing would mean running RVC every single time; baking means the voice is built in. A bit less ceiling, full autonomy — and Ilya actually measured where that ceiling sits. Back to **Emir** for the model.
+> One honest trade-off, and I want to be upfront about it. Because the data is made by RVC, our VITS model learns from **RVC's output** — so its quality **can't be better than that teacher**. RVC is the upper bound; that's just an unavoidable fact of this setup. The alternative was to keep RVC as a post-processing step at the end — but then it wouldn't be **end-to-end**, and that doesn't work properly. So I accepted using RVC to build the data, and in return our model produces the droid voice **itself**, end-to-end, with no second model in production. *(Ilya measures exactly where that ceiling sits, later.)* Back to **Emir** for the model.
 
 ---
 
@@ -63,13 +65,13 @@
 ---
 
 ## Slide 13 · How training works — [DIMA]
-> One training step: encode the text to a prior, encode the real audio to a latent, run the flow, use **MAS** to line up text with audio frames, slice a short segment, decode it to a waveform, compute the losses. Then a standard GAN alternation: the **discriminator** trains on real versus detached fake, then the **generator** trains on **five losses** to fool it — reconstruction weighted **45**. The messy plumbing — two optimizers, detach, clipping, mixed precision — I wrapped in decorators, so the step itself reads clean.
+> So, one training step. We turn the text into a mathematical vector, turn the real audio into a tensor, line them up with **MAS**, decode a short segment to a waveform, and compare — and that gives us the losses. Then it's a standard GAN alternation: first the **discriminator** on real versus fake, then the **generator** on **five losses** to fool it, with reconstruction weighted **45**. The messy plumbing I'll show on the next slide — I wrapped it away so the step itself reads cleanly.
 
 ## Slide 14 · Abstraction — [DIMA]
-> Quick thing I'm proud of. The GAN loop is messy — two optimizers, detach, backward, clipping, the AMP scaler, accumulation — all tangled around two tiny core steps. I moved all that wiring into **decorators** and left only the real step logic in the methods. Read the method, the algorithm is linear; need the plumbing, read the decorator. Same idea as `torch.nn.Module` hiding backward — the complexity doesn't vanish, it just goes where it belongs.
+> Here's something I'm genuinely proud of. My first version of the code was honestly hard to read — even for my teammates. So I refactored it around an abstraction: everything complicated — the logging, the if/else logic, the *"before training do this, after training do that, run the loop"* wiring — I moved into **decorators**. That left the core functions clean and almost trivial to read. And here's my test for it: I came back to the code about a **week** after decorating it, and even though I'd forgotten half of what I'd written, it was immediately readable — I picked it straight back up, didn't have to fix anything, just added a couple of logging lines. Same idea as `torch.nn.Module` hiding backward: the complexity doesn't vanish, it goes where it belongs.
 
 ## Slide 15 · Where & how we trained — [DIMA]
-> On compute: Colab first — and it fought me, sessions dropped around 15 minutes, disk filled with checkpoints. *(beat)* Very generous. So I moved to my local **RTX 5060, 8 gigs**. To fit 8 gigs: **batch size 1 + gradient accumulation**, mixed-precision **fp16**, and zero dataloader workers, because the Windows loader kept crashing. With that working — **Emir**, the bugs.
+> On compute. First I tried **Google Cloud** — but I made some stupid billing mistakes and burned money, which was very annoying. *(beat)* So I switched to my **local machine** — an RTX 5060, 8 gigs — and that was actually fine. With limited VRAM I used **AMP, mixed precision, plus gradient accumulation**, which let me work with an *effective* batch of about 16 instead of 2. Then I had to fix a few problems: early on, some losses sat on a plateau from the start, some were rising, some were just stuck. Once those were sorted, the final clean run took **9.68 GPU-hours** on the local machine. The next slide has the config — nothing you need to focus on. **Emir**, the bugs.
 
 ---
 
